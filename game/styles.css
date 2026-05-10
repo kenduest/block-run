@@ -2182,6 +2182,101 @@ body.screen-menu .mode-card-footer b {
 }
 
 @media (max-width: 680px) {
+    body.screen-menu .app-shell {
+        width: min(100vw - 8px, 520px);
+    }
+
+    body.screen-menu .playfield-panel {
+        padding: 6px;
+    }
+
+    body.screen-menu .board-frame {
+        width: 100%;
+        max-width: none;
+    }
+
+    body.screen-menu #menuScreen {
+        gap: 12px;
+        padding: 14px 12px 12px;
+    }
+
+    body.screen-menu .brand-block {
+        justify-items: start;
+        text-align: left;
+        gap: 6px;
+        padding: 6px 88px 0 8px;
+    }
+
+    body.screen-menu .brand-block .overline {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+    }
+
+    body.screen-menu .brand-block h1 {
+        font-size: clamp(28px, 10vw, 44px);
+        line-height: 0.94;
+    }
+
+    body.screen-menu .menu-settings-button {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        min-width: 70px;
+        min-height: 34px;
+        padding: 0 10px;
+        font-size: 13px;
+    }
+
+    body.screen-menu .mode-list {
+        width: 100%;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    body.screen-menu .mode-tabs button {
+        min-height: 42px;
+        font-size: 15px;
+    }
+
+    body.screen-menu .mode-card {
+        min-height: 128px;
+        padding: 12px;
+        gap: 8px;
+    }
+
+    body.screen-menu .mode-card-copy {
+        gap: 6px;
+    }
+
+    body.screen-menu .mode-card strong {
+        font-size: 17px;
+        line-height: 1.02;
+    }
+
+    body.screen-menu .mode-card em {
+        justify-self: start;
+    }
+
+    body.screen-menu .mode-card-footer {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    body.screen-menu .mode-card-footer b {
+        width: auto;
+        min-width: 92px;
+        min-height: 36px;
+        padding: 0 14px;
+    }
+
+    body.screen-menu .mode-card small {
+        width: auto;
+        margin-left: auto;
+        text-align: right;
+    }
+
     body.screen-playing .app-shell,
     body.screen-paused .app-shell {
         width: min(100vw - 16px, 520px);
