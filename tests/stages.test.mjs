@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { STAGES } from "../src/modes.js";
+import { STAGES } from "../game/src/modes.js";
 
 assert.ok(STAGES.length >= 18);
 assert.ok(new Set(STAGES.map(stage => stage.difficulty)).size >= 3);

@@ -15,7 +15,7 @@ The project started as a simple prototype and has been expanded into a replayabl
 - Game-focused UI:
   center playfield with side HUD panels for goals, controls, queue, hold, and key hints.
 - Content is maintainable:
-  UI text, menu labels, mode descriptions, and stage copy are centralized in `src/i18n.js`.
+  UI text, menu labels, mode descriptions, and stage copy are centralized in `game/src/i18n.js`.
 
 ## Modes
 
@@ -32,7 +32,7 @@ The project started as a simple prototype and has been expanded into a replayabl
 
 ## Run Locally
 
-This project uses ES modules, so opening `index.html` directly with `file://` is not reliable across browsers. Use a local static server instead.
+This project uses ES modules, so opening `game/index.html` directly with `file://` is not reliable across browsers. Use a local static server instead.
 
 ```sh
 make serve
@@ -100,17 +100,20 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
 
 ```text
 .
-├── index.html
-├── styles.css
+├── game/
+│   ├── index.html
+│   ├── styles.css
+│   └── src/
+│       ├── ai.js
+│       ├── game.js
+│       ├── i18n.js
+│       ├── modes.js
+│       ├── renderer.js
+│       ├── rules.js
+│       └── storage.js
+├── docs/
+│   └── README.md
 ├── Makefile
-├── src/
-│   ├── ai.js
-│   ├── game.js
-│   ├── i18n.js
-│   ├── modes.js
-│   ├── renderer.js
-│   ├── rules.js
-│   └── storage.js
 └── tests/
     ├── ai.test.mjs
     ├── rules.test.mjs
@@ -120,17 +123,17 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
 
 ## Architecture Notes
 
-- `src/game.js`:
+- `game/src/game.js`:
   runtime state, input, mode flow, HUD updates, settings, and result/profile screens.
-- `src/rules.js`:
+- `game/src/rules.js`:
   board logic, piece generation, collision, SRS, line clear, and garbage helpers.
-- `src/renderer.js`:
+- `game/src/renderer.js`:
   canvas rendering for board, queue, hold, and effects.
-- `src/modes.js`:
+- `game/src/modes.js`:
   mode definitions, daily rules, and stage configurations.
-- `src/storage.js`:
+- `game/src/storage.js`:
   persistence, normalization, records, achievements, and replay summaries.
-- `src/i18n.js`:
+- `game/src/i18n.js`:
   centralized copy for UI, mode labels, achievements, and stage text.
 
 ## Testing
@@ -150,8 +153,8 @@ Current tests cover:
 
 ## Development Notes
 
-- Prefer editing game copy in `src/i18n.js` rather than scattering strings through runtime logic.
-- Keep gameplay rules in `src/rules.js` and data definitions in `src/modes.js`.
+- Prefer editing game copy in `game/src/i18n.js` rather than scattering strings through runtime logic.
+- Keep gameplay rules in `game/src/rules.js` and data definitions in `game/src/modes.js`.
 - After layout changes, verify the desktop play screen at a 16:9 viewport. The central board should remain visually dominant and side panels should not clip or introduce layout shift.
 - This project intentionally stays framework-free. If you add complexity, it should earn its weight.
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, updateBestScore } from "../src/storage.js";
+import { loadData, markStageComplete, recordGame, resetRecords, saveData, updateBestScore } from "../game/src/storage.js";
 
 const store = new Map();
 globalThis.localStorage = {

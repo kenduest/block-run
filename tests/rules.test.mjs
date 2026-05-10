@@ -11,7 +11,7 @@ import {
     makeGarbage,
     pullFromBag,
     rotateWithSrs,
-} from "../src/rules.js";
+} from "../game/src/rules.js";
 
 let bag = [];
 const rng = createRng(1234);

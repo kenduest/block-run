@@ -2,8 +2,9 @@ PORT ?= 8766
 HOST ?= 127.0.0.1
 PYTHON ?= python3
 NODE ?= node
+GAME_DIR := game
 
-SRC_JS := $(wildcard src/*.js)
+SRC_JS := $(wildcard $(GAME_DIR)/src/*.js)
 TESTS := $(wildcard tests/*.test.mjs)
 
 .PHONY: help serve dev url check test verify clean
@@ -21,7 +22,7 @@ help:
 
 serve:
 	@printf 'Serving Block Run at http://%s:%s/\n' '$(HOST)' '$(PORT)'
-	$(PYTHON) -m http.server $(PORT) --bind $(HOST)
+	cd $(GAME_DIR) && $(PYTHON) -m http.server $(PORT) --bind $(HOST)
 
 dev: serve
 

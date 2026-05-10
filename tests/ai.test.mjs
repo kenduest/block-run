@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { chooseAutoMove } from "../src/ai.js";
-import { createMatrix, createPiece } from "../src/rules.js";
+import { chooseAutoMove } from "../game/src/ai.js";
+import { createMatrix, createPiece } from "../game/src/rules.js";
 
 const arena = createMatrix();
 const player = {

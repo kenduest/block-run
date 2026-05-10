@@ -1,0 +1,15 @@
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Runtime noise
+*.log
+
+# Python static server cache
+__pycache__/
+
+# Local scratch files
+.env
+.env.local
