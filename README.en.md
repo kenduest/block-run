@@ -2,82 +2,63 @@
 
 [繁體中文](./README.md) | [English](./README.en.md)
 
-`Block Run` is a browser-based falling-block game built with plain HTML, CSS, and JavaScript. It is designed as a local-first single-player game: no backend, no account system, no online ranking, and no framework build step.
+`Block Run` is a browser-based falling-block game built with plain HTML, CSS, and JavaScript.  
+There is no backend, no account system, and no framework build pipeline. The focus is simply playing the game.
 
-The project started as a prototype and was expanded into a replayable game with modern handling, multiple modes, stage challenges, daily runs, local records, and AI-assisted demo play.
+## Live demo
+
+```text
+https://kenduest.github.io/block-run/
+```
 
 ## Screenshots
 
-### Main menu
-
-![Block Run main menu](image/game-screenshot-01.png)
-
-### In-game HUD
-
-![Block Run in-game HUD](image/game-screenshot-02.png)
-
-### Settings
-
-![Block Run settings](image/game-screenshot-03.png)
+![Main menu](image/game-screenshot-01.png)
+![In-game HUD](image/game-screenshot-02.png)
+![Settings](image/game-screenshot-03.png)
 
 ## Highlights
 
-- Modern rules and handling:
-  supports `7-bag`, `SRS wall kick`, `Hold`, configurable `Next Queue`, `DAS`, `ARR`, `soft drop`, and `lock delay`.
-- Multiple game modes:
-  includes `Marathon`, `Sprint`, `Ultra`, `Dig`, `Mystery`, `Zen`, `Daily Challenge`, `Stage Mode`, and `Training`.
-- Local progression and records:
-  best scores, per-mode records, stage stars, achievements, daily records, and recent replay summaries stored in `localStorage`.
-- Game-focused UI:
-  centered playfield with side HUD panels for goals, queue, hold, and controls.
-- Maintainable content:
-  UI text, mode labels, descriptions, and stage copy are centralized in `game/src/i18n.js`.
+- Modern falling-block rules: `7-bag`, `SRS wall kick`, `Hold`
+- Tunable handling: `DAS`, `ARR`, `soft drop`, `lock delay`
+- Multiple modes: `Marathon`, `Sprint`, `Ultra`, `Dig`, `Mystery`, `Zen`, `Daily`, `Stage`, `Training`
+- Local records: best scores, achievements, stage progress, daily runs, replay summaries
+- AI support: `AI Demo / AI Assist`
 
-## Modes
+## How to run
 
-- `Marathon`: clear 150 lines, with optional endless continuation.
-- `Sprint`: fixed 40-line race with time, PPS, and KPP tracking.
-- `Ultra`: 3-minute score attack.
-- `Dig`: garbage-clearing practice mode.
-- `Mystery`: local event modifiers such as speed shifts, hidden information, reversed preview, or extra garbage.
-- `Zen`: relaxed play with undo and clear-board actions.
-- `Daily Challenge`: same seed and conditions for the same date.
-- `Stage Mode`: 18 handcrafted stages with stars, restrictions, and special rules.
-- `Training`: fixed-speed efficiency practice.
-- `AI Demo / AI Assist`: automatic play for showcase or observation.
+### Option 1: Play online
 
-## Quick start
+Open:
 
-If you just want to run the game locally, use this flow:
+```text
+https://kenduest.github.io/block-run/
+```
 
-1. Start a local static server. The simplest option is Python's built-in `http.server`.
-2. Run this from the project root:
+### Option 2: Run locally
+
+This project uses ES modules, so opening `game/index.html` directly with `file://` is not reliable.  
+From the project root, run:
 
 ```sh
 make serve
 ```
 
-3. Open this URL in your browser:
+Then open:
 
 ```text
 http://127.0.0.1:8766/index.html
 ```
 
-If port `8766` is already in use, run:
+To use a different port:
 
 ```sh
 make serve PORT=8787
 ```
 
-Then open:
+### Option 3: Build a standalone offline file
 
-```text
-http://127.0.0.1:8787/index.html
-```
-
-## Standalone offline file
-
-If you want to hand this to end users without asking them to run a local server, build the single-file offline version:
+If you want a single local file that users can open directly without running a server:
 
 ```sh
 make package
@@ -89,61 +70,7 @@ Output:
 dist/block-run-standalone.html
 ```
 
-That file can be opened directly in a browser with no `http.server`, `make serve`, or other local server.
-
-## Online demo
-
-Live URL:
-
-```text
-https://kenduest.github.io/block-run/
-```
-
-When `main` is updated, GitHub Pages redeploys automatically.
-
-## Run locally
-
-This project uses ES modules, so opening `game/index.html` directly with `file://` is not reliable across browsers. Use a local static server instead.
-
-```sh
-make serve
-```
-
-Then open:
-
-```text
-the local URL printed by the command
-```
-
-To change the port:
-
-```sh
-make serve PORT=<your-port>
-```
-
-If `make` is not available in your environment, you can run Python directly:
-
-```sh
-cd game
-python3 -m http.server 8766 --bind 127.0.0.1
-```
-
-## Developer commands
-
-```sh
-make help
-make serve
-make check
-make test
-make verify
-make package
-```
-
-- `make serve`: start a local static server for `game/`.
-- `make check`: run Node syntax checks on source and test files.
-- `make test`: run all test files under `tests/`.
-- `make verify`: run `check` and `test`.
-- `make package`: build a single-file standalone HTML that works with `file://`.
+That file can be opened directly in a browser.
 
 ## Controls
 
@@ -161,20 +88,22 @@ make package
 | `R` | Zen undo |
 | `V` | Zen clear board |
 
-## Persistence
+## Developer commands
 
-Game data is stored locally in the browser, including:
+```sh
+make help
+make serve
+make check
+make test
+make verify
+make package
+```
 
-- settings
-- best scores
-- total play stats
-- per-mode totals
-- stage completion and stars
-- achievements
-- daily challenge records
-- recent replay summaries
-
-If saved data is invalid, the game falls back to normalized defaults instead of requiring manual recovery.
+- `make serve`: start a local static server
+- `make check`: run JS syntax checks
+- `make test`: run tests
+- `make verify`: run the full verification flow
+- `make package`: build the standalone offline file
 
 ## Project structure
 
@@ -184,72 +113,24 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
 │   ├── index.html
 │   ├── styles.css
 │   └── src/
-│       ├── ai.js
-│       ├── game.js
-│       ├── i18n.js
-│       ├── modes.js
-│       ├── renderer.js
-│       ├── rules.js
-│       └── storage.js
-├── docs/
-│   └── README.md
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── pages.yml
-├── scripts/
-│   └── build-single-file.mjs
-├── dist/
-│   └── block-run-standalone.html
 ├── image/
-│   ├── game-screenshot-01.png
-│   ├── game-screenshot-02.png
-│   └── game-screenshot-03.png
+├── scripts/
+├── tests/
 ├── Makefile
-└── tests/
-    ├── ai.test.mjs
-    ├── rules.test.mjs
-    ├── stages.test.mjs
-    └── storage.test.mjs
+├── README.md
+└── README.en.md
 ```
 
-## Architecture notes
+## Key files
 
-- `game/src/game.js`:
-  runtime flow, input handling, screen switching, HUD updates, settings, and result/profile views.
-- `game/src/rules.js`:
-  board logic, piece generation, collision, SRS, line clear, and garbage helpers.
-- `game/src/renderer.js`:
-  canvas rendering for board, hold, next queue, and visual effects.
-- `game/src/modes.js`:
-  mode definitions, daily rules, and stage data.
-- `game/src/storage.js`:
-  persistence, normalization, records, achievements, and replay summaries.
-- `game/src/i18n.js`:
-  centralized UI copy, mode labels, achievements, and stage text.
-
-## Testing
-
-This project has no package-manager dependency and no build pipeline. Verification runs directly on Node:
-
-```sh
-make verify
-```
-
-Current tests cover:
-
-- bag generation and rotation rules
-- stage dataset coverage
-- AI helper logic
-- storage normalization and record behavior
-
-## Development notes
-
-- Prefer editing copy in `game/src/i18n.js` instead of scattering strings through runtime logic.
-- Keep gameplay rules in `game/src/rules.js` and data definitions in `game/src/modes.js`.
-- After layout changes, verify the desktop 16:9 view. The center board should stay visually dominant, and side panels should not clip or introduce layout shift.
-- This project intentionally stays framework-free. Extra complexity should have a clear reason.
+- `game/src/game.js`: game flow, input handling, HUD, screen transitions
+- `game/src/rules.js`: falling-block rules, collision, rotation, line clear
+- `game/src/renderer.js`: board, next queue, and hold rendering
+- `game/src/modes.js`: mode and stage data
+- `game/src/storage.js`: local persistence
+- `game/src/i18n.js`: centralized UI copy
+- `scripts/build-single-file.mjs`: standalone packaging script
 
 ## License
 
-Released under the [MIT License](./LICENSE).
+[MIT License](./LICENSE)
