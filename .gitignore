@@ -13,3 +13,6 @@ __pycache__/
 # Local scratch files
 .env
 .env.local
+
+# Generated output
+dist/

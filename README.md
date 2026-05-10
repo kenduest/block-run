@@ -1,70 +1,133 @@
 # Block Run / 方塊挑戰
 
-`Block Run` is a browser-based falling-block game built with plain HTML, CSS, and JavaScript. It is designed as a local-first desktop game: no backend, no account system, no online ranking, and no framework build step.
+[繁體中文](./README.md) | [English](./README.en.md)
 
-The project started as a simple prototype and has been expanded into a replayable single-player game with modern handling, multiple long-play modes, stage challenges, daily runs, local stats, and AI-assisted demo play.
+`Block Run` 是一款以瀏覽器執行的落塊遊戲，使用原生 HTML、CSS 與 JavaScript 製作。它是偏向本機遊玩的單機作品：沒有後端、沒有帳號系統、沒有線上排行榜，也沒有框架建置流程。
 
-## Screenshots
+專案最初從原型開始，後來擴充成可重複遊玩的單人遊戲，包含現代化操作手感、多種模式、關卡挑戰、每日挑戰、本機紀錄，以及 AI 輔助展示玩法。
 
-### Main menu
+## 畫面預覽
 
-![Block Run main menu](image/game-snapshop-01.png)
+### 主選單
 
-### In-game HUD
+![Block Run main menu](image/game-screenshot-01.png)
 
-![Block Run in-game HUD](image/game-snapshop-02.png)
+### 遊戲中 HUD
 
-### Settings
+![Block Run in-game HUD](image/game-screenshot-02.png)
 
-![Block Run settings](image/game-snapshop-03.png)
+### 設定畫面
 
-## Highlights
+![Block Run settings](image/game-screenshot-03.png)
 
-- Modern rules and handling:
-  `7-bag`, `SRS wall kick`, `Hold`, configurable `Next Queue`, `DAS`, `ARR`, `soft drop`, and `lock delay`.
-- Multiple game modes:
-  `Marathon`, `Sprint`, `Ultra`, `Dig`, `Mystery`, `Zen`, `Daily Challenge`, `Stage Mode`, and `Training`.
-- Local progression:
-  best scores, per-mode records, stage stars, achievements, daily records, and recent replay summaries in `localStorage`.
-- Game-focused UI:
-  center playfield with side HUD panels for goals, controls, queue, hold, and key hints.
-- Content is maintainable:
-  UI text, menu labels, mode descriptions, and stage copy are centralized in `game/src/i18n.js`.
+## 特色
 
-## Modes
+- 現代落塊規則與手感：
+  支援 `7-bag`、`SRS wall kick`、`Hold`、可調整的 `Next Queue`、`DAS`、`ARR`、`soft drop` 與 `lock delay`。
+- 多種遊戲模式：
+  提供 `Marathon`、`Sprint`、`Ultra`、`Dig`、`Mystery`、`Zen`、`Daily Challenge`、`Stage Mode` 與 `Training`。
+- 本機進度與紀錄：
+  包含最佳分數、各模式紀錄、關卡星數、成就、每日成績與近期 replay 摘要，皆儲存在 `localStorage`。
+- 遊戲導向介面：
+  採用中央主棋盤搭配側邊 HUD，顯示目標、預覽、保留、操作資訊與提示。
+- 內容集中維護：
+  UI 文字、模式標籤、說明與關卡文案集中在 `game/src/i18n.js`。
 
-- `Marathon`: clear 150 lines, with optional endless play.
-- `Sprint`: fixed 40-line race with time, PPS, and KPP tracking.
-- `Ultra`: 3-minute score attack.
-- `Dig`: garbage-clearing practice mode.
-- `Mystery`: local event modifiers such as speed shifts, hidden play, reversed preview, or extra garbage.
-- `Zen`: relaxed play with undo and clear actions.
-- `Daily Challenge`: same seed and conditions for the same date.
-- `Stage Mode`: 18 handcrafted stages with stars, restrictions, and special rules.
-- `Training`: fixed-speed efficiency practice.
-- `AI Demo / AI Assist`: automatic play for showcase or observation.
+## 遊戲模式
 
-## Run Locally
+- `Marathon`：清除 150 行，可選擇延伸成 endless。
+- `Sprint`：固定 40 行競速，追蹤時間、PPS 與 KPP。
+- `Ultra`：3 分鐘分數挑戰。
+- `Dig`：垃圾行清除練習。
+- `Mystery`：本機事件修飾玩法，例如速度變化、隱藏資訊、預覽反轉或額外垃圾行。
+- `Zen`：較輕鬆的練習模式，支援復原與清版。
+- `Daily Challenge`：同一天使用相同 seed 與條件。
+- `Stage Mode`：18 個手工設計關卡，包含星等、限制與特殊規則。
+- `Training`：固定速度的效率練習模式。
+- `AI Demo / AI Assist`：用來展示或觀察 AI 自動遊玩。
 
-This project uses ES modules, so opening `game/index.html` directly with `file://` is not reliable across browsers. Use a local static server instead.
+## 快速開始
+
+如果你只是想把遊戲跑起來，照下面做即可：
+
+1. 準備一個本機靜態伺服器。最簡單的是使用 Python 內建的 `http.server`。
+2. 在專案根目錄執行：
 
 ```sh
 make serve
 ```
 
-Then open:
+3. 用瀏覽器開啟：
 
 ```text
-the local URL printed by the server
+http://127.0.0.1:8766/index.html
 ```
 
-You can change the port if needed:
+如果 `8766` port 已被占用，可以改成：
 
 ```sh
-make serve PORT=<your-port>
+make serve PORT=8787
 ```
 
-## Developer Commands
+再開啟：
+
+```text
+http://127.0.0.1:8787/index.html
+```
+
+## 單檔離線版
+
+如果你想提供給一般使用者直接本機開啟，不想要求他們啟動 server，可以產生單一 HTML 檔：
+
+```sh
+make package
+```
+
+產出檔案：
+
+```text
+dist/block-run-standalone.html
+```
+
+這個檔案可直接用瀏覽器開啟，不需要 `http.server`、`make serve` 或其他本機伺服器。
+
+## 線上 Demo
+
+此專案已加入 GitHub Actions 與 GitHub Pages 部署流程：
+
+- `.github/workflows/ci.yml`：執行 `make verify`
+- `.github/workflows/pages.yml`：把 `game/` 發佈到 GitHub Pages
+
+當 `main` branch 更新後，Pages 會自動重新部署。啟用後可從 repo 的 Pages 網址直接遊玩 demo。
+
+## 本機執行
+
+此專案使用 ES modules，直接用 `file://` 開啟 `game/index.html` 在不同瀏覽器上不夠穩定，因此建議使用本機靜態伺服器。
+
+```sh
+make serve
+```
+
+然後開啟：
+
+```text
+指令輸出的本機網址
+```
+
+如需改 port：
+
+```sh
+make serve PORT=<你的-port>
+```
+
+如果你的環境沒有 `make`，也可以直接用 Python：
+
+```sh
+cd game
+python3 -m http.server 8766 --bind 127.0.0.1
+```
+
+## 開發指令
 
 ```sh
 make help
@@ -72,45 +135,47 @@ make serve
 make check
 make test
 make verify
+make package
 ```
 
-- `make serve`: start a local static server.
-- `make check`: syntax-check source and test files with Node.
-- `make test`: run all tests under `tests/`.
-- `make verify`: run `check` and `test`.
+- `make serve`：啟動 `game/` 的本機靜態伺服器。
+- `make check`：用 Node 檢查原始碼與測試檔語法。
+- `make test`：執行 `tests/` 下所有測試。
+- `make verify`：依序執行 `check` 與 `test`。
+- `make package`：產生可直接用 `file://` 開啟的單檔離線版 HTML。
 
-## Controls
+## 操作鍵位
 
-| Key | Action |
+| 按鍵 | 功能 |
 | --- | --- |
-| `←` `→` | Move |
-| `↑` / `X` | Rotate clockwise |
-| `Z` | Rotate counterclockwise |
-| `↓` | Soft drop |
-| `Space` | Hard drop |
-| `C` | Hold |
-| `A` | Toggle AI assist |
-| `P` / `Esc` | Pause |
-| `G` | Toggle ghost piece |
-| `R` | Zen undo |
-| `V` | Zen clear board |
+| `←` `→` | 左右移動 |
+| `↑` / `X` | 順時針旋轉 |
+| `Z` | 逆時針旋轉 |
+| `↓` | 軟降 |
+| `Space` | 硬降 |
+| `C` | 保留方塊 |
+| `A` | 切換 AI Assist |
+| `P` / `Esc` | 暫停 |
+| `G` | 切換落點預覽 |
+| `R` | Zen 模式復原 |
+| `V` | Zen 模式清版 |
 
-## Persistence
+## 資料儲存
 
-Game data is stored locally in the browser. Saved data includes:
+遊戲資料會存在瀏覽器本機。包含：
 
-- settings
-- best scores
-- total play stats
-- per-mode totals
-- stage completion and stars
-- achievements
-- daily challenge records
-- recent replay summaries
+- 設定
+- 最佳分數
+- 總遊玩統計
+- 各模式累計紀錄
+- 關卡通關與星數
+- 成就
+- 每日挑戰紀錄
+- 近期 replay 摘要
 
-If saved data is invalid, the game falls back to normalized defaults instead of requiring manual recovery.
+若儲存資料損壞或格式不符，遊戲會回退到正規化後的預設值，而不是要求手動清除資料。
 
-## Project Structure
+## 專案結構
 
 ```text
 .
@@ -127,10 +192,18 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
 │       └── storage.js
 ├── docs/
 │   └── README.md
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── pages.yml
+├── scripts/
+│   └── build-single-file.mjs
+├── dist/
+│   └── block-run-standalone.html
 ├── image/
-│   ├── game-snapshop-01.png
-│   ├── game-snapshop-02.png
-│   └── game-snapshop-03.png
+│   ├── game-screenshot-01.png
+│   ├── game-screenshot-02.png
+│   └── game-screenshot-03.png
 ├── Makefile
 └── tests/
     ├── ai.test.mjs
@@ -139,43 +212,43 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
     └── storage.test.mjs
 ```
 
-## Architecture Notes
+## 架構說明
 
-- `game/src/game.js`:
-  runtime state, input, mode flow, HUD updates, settings, and result/profile screens.
-- `game/src/rules.js`:
-  board logic, piece generation, collision, SRS, line clear, and garbage helpers.
-- `game/src/renderer.js`:
-  canvas rendering for board, queue, hold, and effects.
-- `game/src/modes.js`:
-  mode definitions, daily rules, and stage configurations.
-- `game/src/storage.js`:
-  persistence, normalization, records, achievements, and replay summaries.
-- `game/src/i18n.js`:
-  centralized copy for UI, mode labels, achievements, and stage text.
+- `game/src/game.js`：
+  遊戲流程、輸入處理、模式切換、HUD 更新、設定與結果/紀錄畫面。
+- `game/src/rules.js`：
+  棋盤邏輯、方塊生成、碰撞、SRS、消行與垃圾行輔助。
+- `game/src/renderer.js`：
+  棋盤、保留、Next Queue 與畫面效果的 canvas 繪製。
+- `game/src/modes.js`：
+  模式定義、每日挑戰規則與關卡資料。
+- `game/src/storage.js`：
+  本機儲存、正規化、紀錄、成就與 replay 摘要。
+- `game/src/i18n.js`：
+  集中管理 UI 文案、模式名稱、成就與關卡文字。
 
-## Testing
+## 測試
 
-The project has no package manager dependency and no build pipeline. Verification runs directly on Node:
+此專案沒有 package manager 依賴，也沒有建置流程。驗證直接透過 Node 執行：
 
 ```sh
 make verify
 ```
 
-Current tests cover:
+目前測試涵蓋：
 
-- bag generation and rotation rules
-- stage dataset coverage
-- AI helper logic
-- storage normalization and record behavior
+- bag 生成與旋轉規則
+- stage 資料完整性
+- AI 輔助邏輯
+- storage 正規化與紀錄行為
 
-## Development Notes
+## 開發注意事項
 
-- Prefer editing game copy in `game/src/i18n.js` rather than scattering strings through runtime logic.
-- Keep gameplay rules in `game/src/rules.js` and data definitions in `game/src/modes.js`.
-- After layout changes, verify the desktop play screen at a 16:9 viewport. The central board should remain visually dominant and side panels should not clip or introduce layout shift.
-- This project intentionally stays framework-free. If you add complexity, it should earn its weight.
+- 文案優先改在 `game/src/i18n.js`，不要把文字散落在執行邏輯裡。
+- 遊戲規則盡量放在 `game/src/rules.js`，資料定義放在 `game/src/modes.js`。
+- 介面調整後，至少確認一次桌面 16:9 畫面。中央棋盤應維持視覺主體，側邊資訊不應裁切或造成版面晃動。
+- 這個專案刻意保持 framework-free；新增複雜度要有足夠理由。
 
-## License
+## 授權
 
-Released under the [MIT License](./LICENSE).
+採用 [MIT License](./LICENSE)。

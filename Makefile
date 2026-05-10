@@ -8,7 +8,7 @@ GAME_ENTRY := $(GAME_DIR)/index.html
 SRC_JS := $(wildcard $(GAME_DIR)/src/*.js)
 TESTS := $(wildcard tests/*.test.mjs)
 
-.PHONY: help serve dev url check test verify clean
+.PHONY: help serve dev url check test verify package clean
 
 help:
 	@printf '%s\n' 'Block Run developer commands'
@@ -19,6 +19,7 @@ help:
 	@printf '%-12s %s\n' 'make check' 'Run Node syntax checks'
 	@printf '%-12s %s\n' 'make test' 'Run all test files'
 	@printf '%-12s %s\n' 'make verify' 'Run check and test'
+	@printf '%-12s %s\n' 'make package' 'Build a single-file standalone HTML in dist/'
 	@printf '%-12s %s\n' 'make clean' 'Remove local transient files'
 
 serve:
@@ -47,6 +48,10 @@ test:
 	done
 
 verify: check test
+
+package:
+	@mkdir -p dist
+	$(NODE) scripts/build-single-file.mjs
 
 clean:
 	@find . -name '.DS_Store' -delete
