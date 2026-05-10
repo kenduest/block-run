@@ -101,6 +101,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
     height: 100%;
     box-sizing: border-box;
     background: #030712;
+    touch-action: manipulation;
 }
 
 .screen-layer {

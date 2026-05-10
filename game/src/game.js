@@ -34,6 +34,11 @@ import {
     scoreClear,
     sweepArena,
 } from "./rules.js?v=mobile-ui-20260510";
+import {
+    BOARD_DOUBLE_TAP_MS,
+    isBoardDoubleTap,
+    resolveBoardTapAction,
+} from "./touch.js?v=mobile-ui-20260510";
 
 const elements = {
     board: document.getElementById("board"),
@@ -143,6 +148,8 @@ let lastDisplayedScore = 0;
 let audioContext = null;
 let previousLevel = 1;
 let settingsReturnScreen = "menu";
+let pendingBoardTap = null;
+let previousBoardTap = null;
 const keyState = {
     left: { down: false, das: 0, arr: 0 },
     right: { down: false, das: 0, arr: 0 },
@@ -340,6 +347,7 @@ function bindEvents() {
         button.addEventListener("click", () => action(button.dataset.action));
     });
     bindTouchPadControls();
+    bindBoardTouchControls();
     document.querySelectorAll("[data-settings-tab]").forEach(button => {
         button.addEventListener("click", () => showSettingsPanel(button.dataset.settingsTab));
     });
@@ -389,6 +397,43 @@ function bindTouchPadControls() {
         }
         button.addEventListener("click", () => action(actionName));
     });
+}
+
+function bindBoardTouchControls() {
+    elements.board.addEventListener("pointerup", event => {
+        if (!isBoardTouchPointer(event)) return;
+        if (state.screen !== "playing" || !state.player.matrix) return;
+        event.preventDefault();
+
+        const rect = elements.board.getBoundingClientRect();
+        const tap = { x: event.clientX, y: event.clientY, time: Date.now() };
+        if (isBoardDoubleTap(previousBoardTap, tap)) {
+            clearPendingBoardTap();
+            previousBoardTap = null;
+            action("rotate");
+            return;
+        }
+
+        previousBoardTap = tap;
+        clearPendingBoardTap();
+        pendingBoardTap = window.setTimeout(() => {
+            const boardAction = resolveBoardTapAction(event.clientX, rect.left, rect.width);
+            action(boardAction);
+            previousBoardTap = null;
+            pendingBoardTap = null;
+        }, BOARD_DOUBLE_TAP_MS);
+    });
+}
+
+function isBoardTouchPointer(event) {
+    return event.pointerType === "touch" || event.pointerType === "pen";
+}
+
+function clearPendingBoardTap() {
+    if (pendingBoardTap !== null) {
+        clearTimeout(pendingBoardTap);
+        pendingBoardTap = null;
+    }
 }
 
 function startTouchAction(actionName, button) {
@@ -879,6 +924,10 @@ function renderResult(achievements = []) {
 }
 
 function applyUiState() {
+    if (state.screen !== "playing") {
+        clearPendingBoardTap();
+        previousBoardTap = null;
+    }
     for (const [name, screen] of Object.entries(elements.screens)) {
         screen.classList.toggle("active", name === state.screen);
     }
