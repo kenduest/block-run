@@ -93,12 +93,13 @@ dist/block-run-standalone.html
 
 ## 線上 Demo
 
-此專案已加入 GitHub Actions 與 GitHub Pages 部署流程：
+直接遊玩網址：
 
-- `.github/workflows/ci.yml`：執行 `make verify`
-- `.github/workflows/pages.yml`：把 `game/` 發佈到 GitHub Pages
+```text
+https://kenduest.github.io/block-run/
+```
 
-當 `main` branch 更新後，Pages 會自動重新部署。啟用後可從 repo 的 Pages 網址直接遊玩 demo。
+`main` branch 更新後，GitHub Pages 會自動重新部署。
 
 ## 本機執行
 

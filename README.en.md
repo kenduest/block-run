@@ -93,12 +93,13 @@ That file can be opened directly in a browser with no `http.server`, `make serve
 
 ## Online demo
 
-This repo now includes GitHub Actions and GitHub Pages deployment:
+Live URL:
 
-- `.github/workflows/ci.yml`: runs `make verify`
-- `.github/workflows/pages.yml`: publishes `game/` to GitHub Pages
+```text
+https://kenduest.github.io/block-run/
+```
 
-When `main` is updated, Pages will redeploy automatically. Once Pages is enabled in the repository, users can open the hosted demo directly.
+When `main` is updated, GitHub Pages redeploys automatically.
 
 ## Run locally
 
