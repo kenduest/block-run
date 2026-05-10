@@ -1,4 +1,4 @@
-import { COLS, cloneMatrix, collide, merge, rotate, sweepArena } from "./rules.js";
+import { COLS, cloneMatrix, collide, merge, rotate, sweepArena } from "./rules.js?v=__APP_VERSION__";
 
 export function chooseAutoMove(arena, player) {
     let best = null;

@@ -1,4 +1,4 @@
-import { TEXT } from "./i18n.js?v=mobile-ui-20260510";
+import { TEXT } from "./i18n.js?v=__APP_VERSION__";
 
 const STORAGE_KEY = "block-run-state-v2";
 const LEGACY_STORAGE_KEYS = [

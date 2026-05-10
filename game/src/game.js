@@ -1,6 +1,6 @@
-import { Renderer } from "./renderer.js?v=mobile-ui-20260510";
-import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=mobile-ui-20260510";
-import { TEXT, applyStaticText } from "./i18n.js?v=mobile-ui-20260510";
+import { Renderer } from "./renderer.js?v=__APP_VERSION__";
+import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=__APP_VERSION__";
+import { TEXT, applyStaticText } from "./i18n.js?v=__APP_VERSION__";
 import {
     MODES,
     STAGES,
@@ -13,8 +13,8 @@ import {
     objectiveLabel,
     stageSpeedText,
     todayKey,
-} from "./modes.js?v=mobile-ui-20260510";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=mobile-ui-20260510";
+} from "./modes.js?v=__APP_VERSION__";
+import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=__APP_VERSION__";
 import {
     COLS,
     ARENA_ROWS,
@@ -33,12 +33,12 @@ import {
     rotateWithSrs,
     scoreClear,
     sweepArena,
-} from "./rules.js?v=mobile-ui-20260510";
+} from "./rules.js?v=__APP_VERSION__";
 import {
     BOARD_DOUBLE_TAP_MS,
     isBoardDoubleTap,
     resolveBoardTapAction,
-} from "./touch.js?v=mobile-ui-20260510";
+} from "./touch.js?v=__APP_VERSION__";
 
 const elements = {
     board: document.getElementById("board"),

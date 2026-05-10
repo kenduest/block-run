@@ -8,7 +8,7 @@ GAME_ENTRY := $(GAME_DIR)/index.html
 SRC_JS := $(wildcard $(GAME_DIR)/src/*.js)
 TESTS := $(wildcard tests/*.test.mjs)
 
-.PHONY: help serve dev url check test verify package clean
+.PHONY: help serve dev url check test verify package pages-artifact clean
 
 help:
 	@printf '%s\n' 'Block Run developer commands'
@@ -20,6 +20,7 @@ help:
 	@printf '%-12s %s\n' 'make test' 'Run all test files'
 	@printf '%-12s %s\n' 'make verify' 'Run check and test'
 	@printf '%-12s %s\n' 'make package' 'Build a single-file standalone HTML in dist/'
+	@printf '%-12s %s\n' 'make pages-artifact' 'Build the GitHub Pages artifact in dist/pages'
 	@printf '%-12s %s\n' 'make clean' 'Remove local transient files'
 
 serve:
@@ -52,6 +53,10 @@ verify: check test
 package:
 	@mkdir -p dist
 	$(NODE) scripts/build-single-file.mjs
+
+pages-artifact:
+	@mkdir -p dist
+	APP_VERSION="$$(git rev-parse --short=12 HEAD 2>/dev/null || printf dev)" $(NODE) scripts/prepare-pages-artifact.mjs
 
 clean:
 	@find . -name '.DS_Store' -delete

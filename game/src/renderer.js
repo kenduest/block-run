@@ -1,4 +1,4 @@
-import { COLS, HIDDEN_ROWS, ROWS, createPiece } from "./rules.js";
+import { COLS, HIDDEN_ROWS, ROWS, createPiece } from "./rules.js?v=__APP_VERSION__";
 
 const PALETTE = [
     null,

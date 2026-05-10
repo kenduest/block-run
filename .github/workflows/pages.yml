@@ -28,10 +28,20 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare Pages artifact
+        env:
+          APP_VERSION: ${{ github.sha }}
+        run: node scripts/prepare-pages-artifact.mjs
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./game
+          path: ./dist/pages
 
       - name: Deploy to GitHub Pages
         id: deployment
