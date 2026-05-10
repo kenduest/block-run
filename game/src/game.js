@@ -1,6 +1,6 @@
-import { Renderer } from "./renderer.js?v=hidden-rows-fix-20260510";
-import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=hidden-rows-fix-20260510";
-import { TEXT, applyStaticText } from "./i18n.js?v=hidden-rows-fix-20260510";
+import { Renderer } from "./renderer.js?v=mode-card-layout-fix-20260510";
+import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=mode-card-layout-fix-20260510";
+import { TEXT, applyStaticText } from "./i18n.js?v=mode-card-layout-fix-20260510";
 import {
     MODES,
     STAGES,
@@ -13,8 +13,8 @@ import {
     objectiveLabel,
     stageSpeedText,
     todayKey,
-} from "./modes.js?v=hidden-rows-fix-20260510";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=hidden-rows-fix-20260510";
+} from "./modes.js?v=mode-card-layout-fix-20260510";
+import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=mode-card-layout-fix-20260510";
 import {
     COLS,
     ARENA_ROWS,
@@ -33,7 +33,7 @@ import {
     rotateWithSrs,
     scoreClear,
     sweepArena,
-} from "./rules.js?v=hidden-rows-fix-20260510";
+} from "./rules.js?v=mode-card-layout-fix-20260510";
 
 const elements = {
     board: document.getElementById("board"),
@@ -341,10 +341,21 @@ function bindEvents() {
         button.addEventListener("click", () => showSettingsPanel(button.dataset.settingsTab));
     });
 
-    bindSettingControls();
+bindSettingControls();
     elements.quickSoundToggle.addEventListener("click", () => {
         updateSetting("soundEnabled", !state.settings.soundEnabled);
         syncSettingsForm();
+    });
+
+    // Button ripple effect: track click position
+    document.addEventListener("click", event => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const rect = button.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        button.style.setProperty("--click-x", `${x}%`);
+        button.style.setProperty("--click-y", `${y}%`);
     });
 }
 
@@ -377,6 +388,7 @@ function startMode(modeId) {
     previousLevel = state.level;
     spawnPiece();
     applyStartingGarbage();
+    refreshAiAssistButton();
     playTone(420, 0.05, "triangle");
 }
 
@@ -701,8 +713,15 @@ function updateSetting(key, value) {
     applyUiState();
     if (key === "nextPreviewCount" || key === "skin") {
         renderer.resize();
-        renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+
+    // Hold indicator: dim when hold is used or disabled
+    const holdBox = document.querySelector(".preview-box:has(#hold)");
+    if (holdBox) {
+        const holdUnavailable = !state.canHold || state.rules.noHold;
+        holdBox.classList.toggle("hold-disabled", holdUnavailable);
     }
+}
 }
 
 function resetSettings() {
@@ -865,10 +884,8 @@ function applyUiState() {
     elements.progressLabel.textContent = progress.label;
     elements.progressValue.textContent = progress.value;
     elements.progressBar.style.width = `${Math.max(0, Math.min(1, progress.ratio)) * 100}%`;
-    elements.aiAssistButton.textContent = state.demo.enabled ? TEXT.actions.cancelAiAssist : TEXT.actions.aiAssist;
-    elements.aiAssistButton.classList.toggle("active", state.demo.enabled);
     elements.best.textContent = bestLabel(state.mode).replace(new RegExp(`^${TEXT.best.prefix}\\s*`), "");
-    elements.aiAssistButton.disabled = !state.player.matrix || state.screen === "menu" || state.screen === "stageSelect" || state.screen === "settings" || state.screen === "profile" || state.screen === "result";
+    refreshAiAssistButton();
     elements.quickSoundToggle.textContent = state.settings.soundEnabled ? "🔊" : "🔇";
     elements.quickSoundToggle.classList.toggle("muted", !state.settings.soundEnabled);
     renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
@@ -931,6 +948,18 @@ function updateLiveHud() {
     elements.progressLabel.textContent = progress.label;
     elements.progressValue.textContent = progress.value;
     elements.progressBar.style.width = `${Math.max(0, Math.min(1, progress.ratio)) * 100}%`;
+    refreshAiAssistButton();
+}
+
+function refreshAiAssistButton() {
+    elements.aiAssistButton.textContent = state.demo.enabled ? TEXT.actions.cancelAiAssist : TEXT.actions.aiAssist;
+    elements.aiAssistButton.classList.toggle("active", state.demo.enabled);
+    elements.aiAssistButton.disabled = !state.player.matrix
+        || state.screen === "menu"
+        || state.screen === "stageSelect"
+        || state.screen === "settings"
+        || state.screen === "profile"
+        || state.screen === "result";
 }
 
 function runDemo(deltaTime) {

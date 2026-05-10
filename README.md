@@ -4,6 +4,20 @@
 
 The project started as a simple prototype and has been expanded into a replayable single-player game with modern handling, multiple long-play modes, stage challenges, daily runs, local stats, and AI-assisted demo play.
 
+## Screenshots
+
+### Main menu
+
+![Block Run main menu](image/game-snapshop-01.png)
+
+### In-game HUD
+
+![Block Run in-game HUD](image/game-snapshop-02.png)
+
+### Settings
+
+![Block Run settings](image/game-snapshop-03.png)
+
 ## Highlights
 
 - Modern rules and handling:
@@ -113,6 +127,10 @@ If saved data is invalid, the game falls back to normalized defaults instead of 
 │       └── storage.js
 ├── docs/
 │   └── README.md
+├── image/
+│   ├── game-snapshop-01.png
+│   ├── game-snapshop-02.png
+│   └── game-snapshop-03.png
 ├── Makefile
 └── tests/
     ├── ai.test.mjs

@@ -3,6 +3,7 @@ HOST ?= 127.0.0.1
 PYTHON ?= python3
 NODE ?= node
 GAME_DIR := game
+GAME_ENTRY := $(GAME_DIR)/index.html
 
 SRC_JS := $(wildcard $(GAME_DIR)/src/*.js)
 TESTS := $(wildcard tests/*.test.mjs)
@@ -12,22 +13,22 @@ TESTS := $(wildcard tests/*.test.mjs)
 help:
 	@printf '%s\n' 'Block Run developer commands'
 	@printf '%s\n' ''
-	@printf '%-12s %s\n' 'make serve' 'Start a local static server'
+	@printf '%-12s %s\n' 'make serve' 'Start a local static server for game/'
 	@printf '%-12s %s\n' 'make dev' 'Alias for make serve'
-	@printf '%-12s %s\n' 'make url' 'Print the local game URL'
+	@printf '%-12s %s\n' 'make url' 'Print the game entry URL'
 	@printf '%-12s %s\n' 'make check' 'Run Node syntax checks'
 	@printf '%-12s %s\n' 'make test' 'Run all test files'
 	@printf '%-12s %s\n' 'make verify' 'Run check and test'
 	@printf '%-12s %s\n' 'make clean' 'Remove local transient files'
 
 serve:
-	@printf 'Serving Block Run at http://%s:%s/\n' '$(HOST)' '$(PORT)'
+	@printf 'Serving Block Run from %s at http://%s:%s/\n' '$(GAME_DIR)' '$(HOST)' '$(PORT)'
 	cd $(GAME_DIR) && $(PYTHON) -m http.server $(PORT) --bind $(HOST)
 
 dev: serve
 
 url:
-	@printf 'http://%s:%s/\n' '$(HOST)' '$(PORT)'
+	@printf 'http://%s:%s/%s\n' '$(HOST)' '$(PORT)' '$(notdir $(GAME_ENTRY))'
 
 check:
 	@for file in $(SRC_JS); do \

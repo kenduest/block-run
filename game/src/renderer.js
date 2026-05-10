@@ -261,27 +261,28 @@ function drawClassicCell(ctx, x, y, style, pxSize) {
 }
 
 function drawGhostMatrix(ctx, matrix, offset, pxSize) {
+    ctx.save();
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) drawGhostCell(ctx, x + offset.x, y + offset.y, value, pxSize);
         });
     });
+    ctx.restore();
 }
 
 function drawGhostCell(ctx, x, y, value, pxSize) {
     const style = PALETTE[value] || PALETTE[1];
-    const inset = Math.max(0.18, 5 / pxSize);
-    ctx.save();
-    ctx.globalAlpha = 0.46;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+    const inset = Math.max(0.14, 4 / pxSize);
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
     roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, 0.08);
     ctx.fill();
-    ctx.strokeStyle = style.light;
-    ctx.lineWidth = Math.max(0.026, 1.35 / pxSize);
-    ctx.setLineDash([0.16, 0.13]);
+    ctx.strokeStyle = style.base;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = Math.max(0.032, 1.6 / pxSize);
+    ctx.setLineDash([0.14, 0.12]);
     roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, 0.08);
     ctx.stroke();
-    ctx.restore();
 }
 
 function drawHiddenOverlay(ctx) {
