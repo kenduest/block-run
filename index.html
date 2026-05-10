@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方塊挑戰</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070a12'/%3E%3Crect x='14' y='14' width='16' height='16' fill='%2324d98f'/%3E%3Crect x='34' y='14' width='16' height='16' fill='%2338bdf8'/%3E%3Crect x='14' y='34' width='16' height='16' fill='%23facc15'/%3E%3Crect x='34' y='34' width='16' height='16' fill='%23c084fc'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./styles.css?v=hidden-rows-fix-20260510">
+</head>
+<body class="screen-menu training-hidden">
+    <main class="app-shell" aria-label="方塊挑戰遊戲" data-i18n-aria-label="static.bodyAria">
+        <section class="playfield-panel" aria-label="遊戲區" data-i18n-aria-label="static.playfieldAria">
+            <div class="board-frame">
+                <canvas id="board" width="320" height="640" aria-label="方塊棋盤" data-i18n-aria-label="static.boardAria"></canvas>
+                <div id="screenLayer" class="screen-layer">
+                    <section id="menuScreen" class="screen active" aria-label="主選單" data-i18n-aria-label="static.menuAria">
+                        <div class="brand-block">
+                            <p class="overline" data-i18n="app.brand">BLOCK RUN</p>
+                            <h1 data-i18n="app.title">方塊挑戰</h1>
+                        </div>
+                        <button type="button" class="menu-settings-button" data-command="open-settings" data-i18n="actions.settings">設定</button>
+                        <div class="mode-list" id="modeList"></div>
+                    </section>
+
+                    <section id="stageSelectScreen" class="screen" aria-label="選擇關卡" data-i18n-aria-label="static.stageSelectAria">
+                        <div class="brand-block">
+                            <p class="overline" data-i18n="stageSelect.overline">STAGE SELECT</p>
+                            <h2 data-i18n="stageSelect.title">選擇關卡</h2>
+                            <p data-i18n="stageSelect.description">每關有不同障礙、速度壓力與通關條件。</p>
+                        </div>
+                        <div class="stage-list" id="stageList"></div>
+                        <button type="button" data-command="menu" data-i18n="actions.backToMode">返回模式選擇</button>
+                    </section>
+
+                    <section id="pauseScreen" class="screen" aria-label="暫停選單" data-i18n-aria-label="static.pauseAria">
+                        <h2 data-i18n="pause.title">暫停</h2>
+                        <p id="pauseSummary" data-i18n="pause.summary">調整設定或回到遊戲。</p>
+                        <div class="screen-actions">
+                            <button type="button" class="primary" data-command="resume" data-i18n="actions.resume">繼續</button>
+                            <button type="button" data-command="restart" data-i18n="actions.restart">重開</button>
+                            <button type="button" data-command="open-settings" data-i18n="actions.settings">設定</button>
+                            <button type="button" class="danger-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
+                        </div>
+                    </section>
+
+                    <section id="resultScreen" class="screen" aria-label="結算畫面" data-i18n-aria-label="static.resultAria">
+                        <p id="resultLabel" class="overline" data-i18n="result.label">RESULT</p>
+                        <h2 id="resultTitle" data-i18n="result.done">結算</h2>
+                        <div id="resultStats" class="result-grid"></div>
+                        <p id="achievementNotice" class="achievement-notice"></p>
+                        <div class="screen-actions">
+                            <button type="button" class="primary" data-command="restart" data-i18n="actions.playAgain">再玩一次</button>
+                            <button type="button" data-command="menu" data-i18n="actions.chooseMode">選模式</button>
+                        </div>
+                    </section>
+
+                     <section id="settingsScreen" class="screen" aria-label="設定" data-i18n-aria-label="static.settingsAria">
+                        <h2 data-i18n="settings.title">設定</h2>
+                        <div class="settings-tabs" role="tablist" aria-label="設定分類" data-i18n-aria-label="settings.tabAria">
+                            <button type="button" class="active" data-settings-tab="controls" data-i18n="settings.tabs.controls">控制手感</button>
+                            <button type="button" data-settings-tab="gameplay" data-i18n="settings.tabs.gameplay">遊戲資訊</button>
+                            <button type="button" data-settings-tab="presentation" data-i18n="settings.tabs.presentation">畫面效果</button>
+                        </div>
+                        <div class="settings-list">
+                            <section class="settings-group active" data-settings-panel="controls">
+                                <p class="settings-section"><span data-i18n="settings.tabs.controls">控制手感</span> <small data-i18n="settings.immediate">立即生效</small></p>
+                                <label class="range-row">
+                                    <span><strong data-i18n="settings.controls.das">DAS</strong><small data-i18n="settings.controls.dasHelp">長按左右後，開始連續移動前的等待時間。</small></span>
+                                    <input id="dasSetting" type="range" min="60" max="260" step="5">
+                                    <b id="dasValue">125 ms</b>
+                                </label>
+                                <label class="range-row">
+                                    <span><strong data-i18n="settings.controls.arr">ARR</strong><small data-i18n="settings.controls.arrHelp">連續左右移動的間隔；越低越快。</small></span>
+                                    <input id="arrSetting" type="range" min="0" max="90" step="2">
+                                    <b id="arrValue">28 ms</b>
+                                </label>
+                                <label class="range-row">
+                                    <span><strong data-i18n="settings.controls.softDrop">軟降速度</strong><small data-i18n="settings.controls.softDropHelp">按住下鍵時的下降倍率。</small></span>
+                                    <input id="softDropSetting" type="range" min="4" max="40" step="1">
+                                    <b id="softDropValue">18x</b>
+                                </label>
+                                <label class="range-row">
+                                    <span><strong data-i18n="settings.controls.lockDelay">Lock Delay</strong><small data-i18n="settings.controls.lockDelayHelp">落地後，鎖定前還能微調的時間。</small></span>
+                                    <input id="lockDelaySetting" type="range" min="120" max="900" step="10">
+                                    <b id="lockDelayValue">500 ms</b>
+                                </label>
+                            </section>
+
+                            <section class="settings-group" data-settings-panel="gameplay">
+                                <p class="settings-section"><span data-i18n="settings.tabs.gameplay">遊戲資訊</span> <small data-i18n="settings.appliedByItem">依項目套用</small></p>
+                                <label class="switch-row">
+                                    <span><strong data-i18n="settings.gameplay.endless">Marathon Endless</strong><small data-i18n="settings.gameplay.endlessHelp">Marathon 不以 150 行結束；下一次開始 Marathon 時套用。</small></span>
+                                    <input id="marathonEndlessSetting" type="checkbox">
+                                </label>
+                                <label class="field-row">
+                                    <span><strong data-i18n="settings.gameplay.nextQueue">Next Queue</strong><small data-i18n="settings.gameplay.nextQueueHelp">下一方塊預覽；可完全不顯示。</small></span>
+                                    <select id="nextPreviewSetting">
+                                        <option value="0" data-i18n="settings.gameplay.hidden">不顯示</option>
+                                        <option value="1" data-i18n="settings.gameplay.pieces1">1 顆</option>
+                                        <option value="3" data-i18n="settings.gameplay.pieces3">3 顆</option>
+                                        <option value="5" data-i18n="settings.gameplay.pieces5">5 顆</option>
+                                    </select>
+                                </label>
+                                <label class="switch-row">
+                                    <span><strong data-i18n="settings.gameplay.ghost">落點預覽</strong><small data-i18n="settings.gameplay.ghostHelp">顯示方塊會落在哪裡的影子。</small></span>
+                                    <input id="ghostSetting" type="checkbox">
+                                </label>
+                                <label class="switch-row">
+                                    <span><strong data-i18n="settings.gameplay.hints">鍵位提示</strong><small data-i18n="settings.gameplay.hintsHelp">右側操作說明區是否顯示。</small></span>
+                                    <input id="hintsSetting" type="checkbox">
+                                </label>
+                            </section>
+
+                            <section class="settings-group" data-settings-panel="presentation">
+                                <p class="settings-section"><span data-i18n="settings.tabs.presentation">畫面效果</span> <small data-i18n="settings.immediate">立即生效</small></p>
+                                <label class="switch-row">
+                                    <span><strong data-i18n="settings.presentation.sound">音效</strong><small data-i18n="settings.presentation.soundHelp">旋轉、落下、消行與結算提示音。</small></span>
+                                    <input id="soundSetting" type="checkbox">
+                                </label>
+                                <label class="field-row">
+                                    <span><strong data-i18n="settings.presentation.effects">特效強度</strong><small data-i18n="settings.presentation.effectsHelp">消行、升級、結算粒子效果的量。</small></span>
+                                    <select id="effectsSetting">
+                                        <option value="off" data-i18n="settings.presentation.effectsOff">關閉</option>
+                                        <option value="low" data-i18n="settings.presentation.effectsLow">低</option>
+                                        <option value="normal" data-i18n="settings.presentation.effectsNormal">標準</option>
+                                        <option value="high" data-i18n="settings.presentation.effectsHigh">高</option>
+                                    </select>
+                                </label>
+                                <label class="field-row">
+                                    <span><strong data-i18n="settings.presentation.skin">材質風格</strong><small data-i18n="settings.presentation.skinHelp">棋盤上方塊的視覺樣式。</small></span>
+                                    <select id="skinSetting">
+                                        <option value="premium" data-i18n="settings.presentation.skinPremium">寶石</option>
+                                        <option value="flat" data-i18n="settings.presentation.skinFlat">霓虹平面</option>
+                                        <option value="classic" data-i18n="settings.presentation.skinClassic">經典</option>
+                                    </select>
+                                </label>
+                            </section>
+                        </div>
+                        <div class="screen-actions">
+                            <button type="button" class="primary" data-command="close-settings" data-i18n="actions.done">完成</button>
+                            <button type="button" data-command="reset-settings" data-i18n="actions.resetDefaults">重置預設</button>
+                        </div>
+                    </section>
+
+                    <section id="profileScreen" class="screen" aria-label="紀錄" data-i18n-aria-label="static.profileAria">
+                        <div class="profile-header">
+                            <div>
+                                <p class="overline" data-i18n="profile.overline">PROFILE</p>
+                                <h2 data-i18n="profile.title">我的紀錄</h2>
+                            </div>
+                            <div class="profile-actions">
+                                <button type="button" class="danger-action" data-command="reset-records" data-i18n="actions.resetRecords">重置紀錄</button>
+                                <button type="button" data-command="menu" data-i18n="actions.back">返回</button>
+                            </div>
+                        </div>
+                        <div class="profile-content">
+                            <div id="profileSummary" class="profile-summary-grid"></div>
+                            <section class="profile-section">
+                                <h3 class="hud-section-title" data-i18n="profile.achievements">徽章</h3>
+                                <ul id="achievementList" class="profile-list"></ul>
+                            </section>
+                            <section class="profile-section">
+                                <h3 class="hud-section-title" data-i18n="profile.replays">最近 Replay</h3>
+                                <ul id="replayList" class="profile-list"></ul>
+                            </section>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+
+        <aside class="hud" aria-label="遊戲資訊" data-i18n-aria-label="static.hudAria">
+            <header class="hud-header">
+                <div>
+                    <span id="modeName" class="mode-name" data-i18n="screens.menu">主選單</span>
+                    <h2 id="objectiveText" data-i18n="hud.chooseMode">選擇模式開始</h2>
+                </div>
+                <div class="hud-header-right">
+                    <button type="button" id="quickSoundToggle" class="icon-btn" title="切換音效" aria-label="切換音效" data-i18n-title="hud.soundToggle" data-i18n-aria-label="hud.soundToggle">🔊</button>
+                    <span id="statusBadge" class="status-badge" data-i18n="status.ready">準備</span>
+                </div>
+            </header>
+
+            <section class="stat-grid" aria-label="數據" data-i18n-aria-label="static.statsAria">
+                <div class="stat"><span data-i18n="hud.score">分數</span><strong id="scoreValue">0</strong></div>
+                <div class="stat"><span data-i18n="hud.bestScore">最高分</span><strong id="bestValue">0</strong></div>
+                <div class="stat"><span data-i18n="hud.lines">行數</span><strong id="linesValue">0</strong></div>
+                <div class="stat"><span data-i18n="hud.level">等級</span><strong id="levelValue">1</strong></div>
+                <div class="stat training-only"><span>PPS</span><strong id="ppsValue">0.00</strong></div>
+                <div class="stat training-only"><span>LPM</span><strong id="lpmValue">0.0</strong></div>
+            </section>
+
+            <section class="preview-grid" aria-label="下一顆與保留" data-i18n-aria-label="static.previewAria">
+                <h3 class="hud-section-title" data-i18n="hud.preview">方塊預覽</h3>
+                <div class="next-preview-panel">
+                    <span class="panel-label" data-i18n="hud.nextQueue">Next Queue</span>
+                    <div class="preview-box next-box"><canvas id="next" width="112" height="336"></canvas></div>
+                </div>
+                <div>
+                    <span class="panel-label" data-i18n="hud.hold">保留</span>
+                    <div class="preview-box"><canvas id="hold" width="112" height="112"></canvas></div>
+                </div>
+            </section>
+
+            <section class="progress-panel">
+                <h3 class="hud-section-title" data-i18n="hud.currentGoal">目前目標</h3>
+                <div class="meter-head">
+                    <span id="progressLabel" data-i18n="hud.goal">目標</span>
+                    <strong id="progressValue">-</strong>
+                </div>
+                <div class="meter"><span id="progressBar"></span></div>
+                <p id="comboText" class="combo-text"></p>
+            </section>
+
+            <section class="control-panel">
+                <h3 class="hud-section-title" data-i18n="hud.controls">操作</h3>
+                <button type="button" class="primary" data-command="pause" data-i18n="actions.pause">暫停</button>
+                <button type="button" data-command="restart" data-i18n="actions.restart">重開</button>
+                <button type="button" data-command="hold" data-i18n="actions.hold">保留</button>
+                <button type="button" data-command="open-settings" data-i18n="actions.settings">設定</button>
+                <button type="button" data-command="zen-undo" data-i18n="actions.undo">倒退</button>
+                <button type="button" data-command="zen-clear" data-i18n="actions.clear">清空</button>
+                <button type="button" class="wide ai-action" id="aiAssistButton" data-command="toggle-ai" data-i18n="actions.aiAssist">AI 接手</button>
+                <button type="button" class="wide danger-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
+            </section>
+
+             <section id="hintsPanel" class="hints">
+                <h3 class="hud-section-title" data-i18n="hud.keys">鍵位</h3>
+                <div class="key-map">
+                    <div><span><kbd>←</kbd><kbd>→</kbd></span><b data-i18n="keys.move">移動</b></div>
+                    <div><span><kbd>↑</kbd><kbd>X</kbd></span><b data-i18n="keys.rotate">旋轉</b></div>
+                    <div><span><kbd>Z</kbd></span><b data-i18n="keys.reverse">反轉</b></div>
+                    <div><span><kbd>↓</kbd></span><b data-i18n="keys.softDrop">軟降</b></div>
+                    <div><span><kbd>Space</kbd></span><b data-i18n="keys.hardDrop">硬降</b></div>
+                    <div><span><kbd>C</kbd></span><b data-i18n="keys.hold">保留</b></div>
+                    <div><span><kbd>A</kbd></span><b data-i18n="keys.ai">AI 接手</b></div>
+                    <div><span><kbd>P</kbd><kbd>Esc</kbd></span><b data-i18n="keys.pause">暫停</b></div>
+                    <div><span><kbd>G</kbd></span><b data-i18n="keys.ghost">落點預覽</b></div>
+                    <div class="zen-key"><span><kbd>R</kbd><kbd>V</kbd></span><b data-i18n="keys.zen">Zen 倒退 / 清空</b></div>
+                </div>
+            </section>
+
+            <section class="touch-pad" aria-label="手機控制" data-i18n-aria-label="static.touchAria">
+                <button type="button" data-action="left">←</button>
+                <button type="button" data-action="right">→</button>
+                <button type="button" data-action="rotate">↻</button>
+                <button type="button" data-action="drop">⤓</button>
+                <button type="button" data-action="down">↓</button>
+                <button type="button" data-action="hold" data-i18n="actions.hold">保留</button>
+                <button type="button" data-action="pause" data-i18n="actions.pause">暫停</button>
+                <button type="button" data-action="ghost" data-i18n="actions.ghost">落點</button>
+            </section>
+        </aside>
+    </main>
+
+    <script type="module" src="./src/game.js?v=hidden-rows-fix-20260510"></script>
+</body>
+</html>
