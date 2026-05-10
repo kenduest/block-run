@@ -48,6 +48,7 @@ button {
     font-weight: 750;
     cursor: pointer;
     overflow: hidden;
+    touch-action: manipulation;
     transition: background 0.14s ease, border-color 0.14s ease, transform 0.12s ease;
 }
 
@@ -111,20 +112,17 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .screen {
     position: absolute;
     inset: 0;
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 14px;
     justify-content: center;
     padding: 28px;
     background: rgba(4, 8, 17, 0.86);
     backdrop-filter: blur(10px);
-    opacity: 0;
     pointer-events: none;
-    transform: scale(0.97);
-    transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
-.screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+.screen.active { display: flex; pointer-events: auto; }
 .screen h1, .screen h2, .hud h2 { margin: 0; letter-spacing: 0; }
 .screen h1 { font-size: clamp(30px, 4.4vw, 46px); line-height: 0.95; }
 .screen h2 { font-size: clamp(24px, 3.2vw, 34px); line-height: 1; }
@@ -1491,6 +1489,12 @@ body.screen-result.game-over .result-grid div {
     gap: 8px;
 }
 
+.touch-pad button.active {
+    background: rgba(36, 217, 143, 0.25);
+    border-color: rgba(36, 217, 143, 0.42);
+    transform: scale(0.94);
+}
+
 .training-hidden .training-only {
     display: none;
 }
@@ -1828,7 +1832,7 @@ body.screen-menu .mode-card-footer b {
     }
 
     .app-shell {
-        width: min(100vw - 18px, 460px);
+        width: min(100vw - 18px, 520px);
         height: auto;
         grid-template-columns: 1fr;
         gap: 12px;
@@ -1837,21 +1841,59 @@ body.screen-menu .mode-card-footer b {
     body.screen-menu .app-shell,
     body.screen-stageSelect .app-shell,
     body.screen-profile .app-shell {
-        width: min(100vw - 18px, 460px);
+        width: min(100vw - 18px, 520px);
+    }
+
+    body.screen-playing .app-shell,
+    body.screen-paused .app-shell {
+        width: min(100vw - 18px, 520px);
+        gap: 10px;
+    }
+
+    body.screen-playing .playfield-panel,
+    body.screen-paused .playfield-panel,
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        grid-column: auto;
+        grid-row: auto;
     }
 
     body.screen-menu .board-frame,
     body.screen-stageSelect .board-frame,
-    body.screen-profile .board-frame {
+    body.screen-profile .board-frame,
+    body.screen-playing .board-frame,
+    body.screen-paused .board-frame {
         height: auto;
         min-height: 0;
         aspect-ratio: 10 / 20;
+        max-height: min(58vh, 620px);
     }
 
     .hud {
         order: -1;
         overflow: visible;
         padding: 14px;
+    }
+
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        display: grid;
+        order: 0;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        overflow: visible;
+        width: 100%;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header,
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel,
+    body.screen-playing .stat-grid,
+    body.screen-paused .stat-grid {
+        grid-column: 1 / -1;
     }
 
     .stat-grid {
@@ -1884,8 +1926,22 @@ body.screen-menu .mode-card-footer b {
         height: 82px;
     }
 
-    .hints { display: none; }
-    .touch-pad { display: grid; }
+    .hints,
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel { display: none; }
+
+    body.screen-playing .touch-pad {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        position: sticky;
+        bottom: 0;
+        z-index: 8;
+        width: 100%;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        background: linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(7, 10, 18, 0.88) 26%, rgba(7, 10, 18, 0.96));
+    }
+
+    body.screen-paused .touch-pad { display: none; }
     .screen { padding: 20px; }
 
     body.screen-menu #menuScreen {
@@ -2006,6 +2062,171 @@ body.screen-menu .mode-card-footer b {
     .mode-card > span > span {
         min-height: 0;
         -webkit-line-clamp: 1;
+    }
+
+    .touch-pad button {
+        min-width: 0;
+    }
+}
+
+@media (pointer: coarse) and (min-width: 861px) and (max-width: 1180px) {
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel {
+        display: none;
+    }
+
+    body.screen-playing .touch-pad {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(13, 20, 36, 0.72);
+    }
+
+    body.screen-playing .touch-pad button {
+        min-height: 58px;
+        font-size: 20px;
+        border-radius: 14px;
+        background: rgba(30, 42, 68, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+}
+
+@media (max-width: 1180px) and (min-width: 861px) {
+    body.screen-playing .app-shell,
+    body.screen-paused .app-shell {
+        width: min(100vw - 20px, 1120px);
+        height: calc(100vh - 20px);
+        grid-template-columns: minmax(280px, 34vw) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    body.screen-playing .playfield-panel,
+    body.screen-paused .playfield-panel {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    body.screen-playing .board-frame,
+    body.screen-paused .board-frame {
+        height: auto;
+        max-height: calc(100vh - 56px);
+        aspect-ratio: 10 / 20;
+    }
+
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+        overflow: auto;
+        align-content: start;
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    body.screen-playing .hud > *,
+    body.screen-paused .hud > * {
+        grid-column: auto;
+        grid-row: auto;
+        align-self: stretch;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header,
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel {
+        grid-column: 1 / -1;
+    }
+
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.screen-playing .hints,
+    body.screen-paused .hints {
+        display: none;
+    }
+}
+
+@media (max-height: 520px) and (max-width: 980px) {
+    body.screen-playing,
+    body.screen-paused {
+        overflow: hidden;
+    }
+
+    body.screen-playing .app-shell,
+    body.screen-paused .app-shell {
+        width: min(100vw - 12px, 960px);
+        height: calc(100vh - 12px);
+        grid-template-columns: minmax(200px, 34vw) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+        gap: 10px;
+    }
+
+    body.screen-playing .playfield-panel,
+    body.screen-paused .playfield-panel {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        display: grid;
+        grid-column: 2;
+        grid-row: 1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px;
+        overflow: auto;
+        align-content: start;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel {
+        grid-column: 1 / -1;
+    }
+
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.screen-playing .hints,
+    body.screen-paused .hints,
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel {
+        display: none;
+    }
+
+    body.screen-playing .touch-pad {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-column: 1 / -1;
+        position: sticky;
+        bottom: 0;
+        z-index: 8;
+        padding-top: 6px;
+        background: linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(7, 10, 18, 0.92) 36%);
+    }
+
+    body.screen-playing .board-frame,
+    body.screen-paused .board-frame {
+        max-height: calc(100vh - 28px);
     }
 }
 

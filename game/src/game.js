@@ -335,8 +335,10 @@ function bindEvents() {
         button.addEventListener("click", () => command(button.dataset.command));
     });
     document.querySelectorAll("[data-action]").forEach(button => {
+        if (button.closest(".touch-pad")) return;
         button.addEventListener("click", () => action(button.dataset.action));
     });
+    bindTouchPadControls();
     document.querySelectorAll("[data-settings-tab]").forEach(button => {
         button.addEventListener("click", () => showSettingsPanel(button.dataset.settingsTab));
     });
@@ -357,6 +359,57 @@ bindSettingControls();
         button.style.setProperty("--click-x", `${x}%`);
         button.style.setProperty("--click-y", `${y}%`);
     });
+}
+
+function bindTouchPadControls() {
+    document.querySelectorAll(".touch-pad [data-action]").forEach(button => {
+        const actionName = button.dataset.action;
+        if (["left", "right", "down"].includes(actionName)) {
+            const release = () => stopTouchAction(actionName, button);
+            button.addEventListener("pointerdown", event => {
+                if (event.pointerType === "mouse" && event.button !== 0) return;
+                event.preventDefault();
+                startTouchAction(actionName, button);
+                button.dataset.skipClick = "1";
+                if (button.setPointerCapture) {
+                    try { button.setPointerCapture(event.pointerId); } catch {}
+                }
+            });
+            button.addEventListener("pointerup", release);
+            button.addEventListener("pointercancel", release);
+            button.addEventListener("lostpointercapture", release);
+            button.addEventListener("click", event => {
+                if (button.dataset.skipClick === "1") {
+                    delete button.dataset.skipClick;
+                    event.preventDefault();
+                }
+            });
+            return;
+        }
+        button.addEventListener("click", () => action(actionName));
+    });
+}
+
+function startTouchAction(actionName, button) {
+    if (state.screen !== "playing") return;
+    button.classList.add("active");
+    if (actionName === "left" || actionName === "right") {
+        pressHorizontal(actionName);
+        return;
+    }
+    if (actionName === "down") {
+        keyState.down = true;
+        action("down");
+    }
+}
+
+function stopTouchAction(actionName, button) {
+    button.classList.remove("active");
+    if (actionName === "left" || actionName === "right") {
+        releaseHorizontal(actionName);
+        return;
+    }
+    if (actionName === "down") keyState.down = false;
 }
 
 function command(commandName) {
