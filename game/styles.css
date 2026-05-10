@@ -1840,7 +1840,8 @@ body.screen-menu .mode-card-footer b {
 
     body.screen-menu .app-shell,
     body.screen-stageSelect .app-shell,
-    body.screen-profile .app-shell {
+    body.screen-profile .app-shell,
+    body.screen-settings .app-shell {
         width: min(100vw - 18px, 520px);
     }
 
@@ -1848,6 +1849,9 @@ body.screen-menu .mode-card-footer b {
     body.screen-paused .app-shell {
         width: min(100vw - 18px, 520px);
         gap: 10px;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        justify-items: stretch;
     }
 
     body.screen-playing .playfield-panel,
@@ -1863,10 +1867,50 @@ body.screen-menu .mode-card-footer b {
     body.screen-profile .board-frame,
     body.screen-playing .board-frame,
     body.screen-paused .board-frame {
+        width: min(100%, 320px);
         height: auto;
         min-height: 0;
         aspect-ratio: 10 / 20;
         max-height: min(58vh, 620px);
+    }
+
+    body.screen-menu .board-frame,
+    body.screen-stageSelect .board-frame,
+    body.screen-settings .board-frame,
+    body.screen-profile .board-frame {
+        aspect-ratio: auto;
+        max-height: none;
+        height: auto;
+    }
+
+    body.screen-menu #board,
+    body.screen-stageSelect #board,
+    body.screen-settings #board,
+    body.screen-profile #board {
+        display: none;
+    }
+
+    body.screen-menu .screen-layer,
+    body.screen-stageSelect .screen-layer,
+    body.screen-settings .screen-layer,
+    body.screen-profile .screen-layer {
+        position: static;
+    }
+
+    body.screen-menu .screen,
+    body.screen-stageSelect .screen,
+    body.screen-settings .screen,
+    body.screen-profile .screen {
+        position: relative;
+        inset: auto;
+    }
+
+    body.screen-menu #menuScreen,
+    body.screen-stageSelect #stageSelectScreen,
+    body.screen-settings #settingsScreen,
+    body.screen-profile #profileScreen {
+        position: relative;
+        inset: auto;
     }
 
     .hud {
@@ -1958,68 +2002,98 @@ body.screen-menu .mode-card-footer b {
         grid-column: 1;
         grid-row: auto;
         max-width: none;
-        padding: 18px;
+        padding: 12px 8px 4px;
     }
 
     body.screen-menu .menu-settings-button {
         grid-column: 1;
         grid-row: auto;
-        justify-self: start;
-        min-width: 84px;
-        min-height: 38px;
+        justify-self: end;
+        min-width: 76px;
+        min-height: 36px;
+        padding: 0 12px;
+        font-size: 14px;
     }
 
     body.screen-menu .brand-block h1 {
-        font-size: clamp(38px, 13vw, 62px);
+        font-size: clamp(34px, 11vw, 52px);
     }
 
     body.screen-menu .brand-block p:last-child {
-        font-size: 15px;
+        font-size: 14px;
     }
 
     body.screen-menu .mode-list {
         grid-column: 1;
         grid-row: auto;
         align-self: end;
-        padding: 14px;
+        gap: 12px;
+        padding: 12px;
     }
 
     body.screen-menu .mode-tabs {
         width: 100%;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 6px;
     }
 
     body.screen-menu .mode-tabs button {
-        min-height: 54px;
-        font-size: 18px;
+        min-height: 46px;
+        font-size: 16px;
     }
 
     body.screen-menu .mode-card-grid,
     body.screen-menu .mode-card-grid.mode-count-2,
     body.screen-menu .mode-card-grid.mode-count-3 {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    body.screen-menu .mode-card {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    body.screen-menu .mode-card-copy {
+        gap: 8px;
+    }
+
+    body.screen-menu .mode-card strong {
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    body.screen-menu .mode-card em {
+        min-height: 28px;
+        padding: 0 8px;
+        font-size: 11px;
     }
 
     body.screen-menu .mode-card-footer {
         flex-direction: column;
         align-items: stretch;
-        gap: 12px;
-    }
-
-    body.screen-menu .mode-card-footer b,
-    body.screen-menu .mode-card small {
-        width: 100%;
+        gap: 8px;
+        margin-top: 4px;
     }
 
     body.screen-menu .mode-card-footer b {
-        min-height: 52px;
-        font-size: 16px;
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        padding: 0 12px;
+        font-size: 14px;
     }
 
     body.screen-menu .mode-card small {
+        width: 100%;
         min-height: 0;
         text-align: left;
-        font-size: 14px;
+        font-size: 13px;
+    }
+
+    body.screen-menu .mode-card > span > span {
+        display: none;
     }
 
     body.screen-settings #settingsScreen {
@@ -2230,8 +2304,7 @@ body.screen-menu .mode-card-footer b {
     }
 }
 
-@media (max-width: 520px) {
-    .mode-card-grid,
+@media (max-width: 400px) {
     .mode-tabs {
         grid-template-columns: 1fr;
     }
@@ -2239,6 +2312,12 @@ body.screen-menu .mode-card-footer b {
     body.screen-menu .mode-tabs button {
         min-height: 50px;
         font-size: 16px;
+    }
+
+    body.screen-menu .mode-card-grid,
+    body.screen-menu .mode-card-grid.mode-count-2,
+    body.screen-menu .mode-card-grid.mode-count-3 {
+        grid-template-columns: 1fr;
     }
 }
 

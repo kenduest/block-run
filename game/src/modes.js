@@ -1,5 +1,5 @@
 import { hashSeed } from "./rules.js";
-import { TEXT } from "./i18n.js?v=hidden-rows-fix-20260510";
+import { TEXT } from "./i18n.js?v=mobile-ui-20260510";
 
 export const MODE_ORDER = ["marathon", "sprint", "ultra", "dig", "mystery", "zen", "daily", "stages", "training"];
 

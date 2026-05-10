@@ -1,6 +1,6 @@
-import { Renderer } from "./renderer.js?v=mode-card-layout-fix-20260510";
-import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=mode-card-layout-fix-20260510";
-import { TEXT, applyStaticText } from "./i18n.js?v=mode-card-layout-fix-20260510";
+import { Renderer } from "./renderer.js?v=mobile-ui-20260510";
+import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=mobile-ui-20260510";
+import { TEXT, applyStaticText } from "./i18n.js?v=mobile-ui-20260510";
 import {
     MODES,
     STAGES,
@@ -13,8 +13,8 @@ import {
     objectiveLabel,
     stageSpeedText,
     todayKey,
-} from "./modes.js?v=mode-card-layout-fix-20260510";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=mode-card-layout-fix-20260510";
+} from "./modes.js?v=mobile-ui-20260510";
+import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=mobile-ui-20260510";
 import {
     COLS,
     ARENA_ROWS,
@@ -33,7 +33,7 @@ import {
     rotateWithSrs,
     scoreClear,
     sweepArena,
-} from "./rules.js?v=mode-card-layout-fix-20260510";
+} from "./rules.js?v=mobile-ui-20260510";
 
 const elements = {
     board: document.getElementById("board"),
