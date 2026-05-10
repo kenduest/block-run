@@ -1489,6 +1489,26 @@ body.screen-result.game-over .result-grid div {
     gap: 8px;
 }
 
+.touch-toolbar,
+.touch-clusters,
+.touch-cluster {
+    display: grid;
+    gap: 8px;
+}
+
+.touch-toolbar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.touch-clusters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.touch-cluster {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .touch-pad button.active {
     background: rgba(36, 217, 143, 0.25);
     border-color: rgba(36, 217, 143, 0.42);
@@ -1832,7 +1852,7 @@ body.screen-menu .mode-card-footer b {
     }
 
     .app-shell {
-        width: min(100vw - 18px, 520px);
+        width: min(100vw - 18px, 760px);
         height: auto;
         grid-template-columns: 1fr;
         gap: 12px;
@@ -1842,13 +1862,13 @@ body.screen-menu .mode-card-footer b {
     body.screen-stageSelect .app-shell,
     body.screen-profile .app-shell,
     body.screen-settings .app-shell {
-        width: min(100vw - 18px, 520px);
+        width: min(100vw - 18px, 760px);
     }
 
     body.screen-playing .app-shell,
     body.screen-paused .app-shell {
-        width: min(100vw - 18px, 520px);
-        gap: 10px;
+        width: min(100vw - 18px, 760px);
+        gap: 12px;
         grid-template-columns: 1fr;
         grid-template-rows: auto auto;
         justify-items: stretch;
@@ -1867,11 +1887,11 @@ body.screen-menu .mode-card-footer b {
     body.screen-profile .board-frame,
     body.screen-playing .board-frame,
     body.screen-paused .board-frame {
-        width: min(100%, 320px);
+        width: min(100%, clamp(260px, 54vw, 380px));
         height: auto;
         min-height: 0;
         aspect-ratio: 10 / 20;
-        max-height: min(58vh, 620px);
+        max-height: min(60vh, 720px);
     }
 
     body.screen-menu .board-frame,
@@ -1914,27 +1934,50 @@ body.screen-menu .mode-card-footer b {
     }
 
     .hud {
-        order: -1;
         overflow: visible;
         padding: 14px;
     }
 
+    body.screen-playing .playfield-panel,
+    body.screen-paused .playfield-panel {
+        padding: 10px 10px 6px;
+    }
+
     body.screen-playing .hud,
     body.screen-paused .hud {
+        --touch-dock-space: calc(124px + env(safe-area-inset-bottom));
         display: grid;
-        order: 0;
         grid-template-columns: 1fr;
         grid-auto-rows: min-content;
         gap: 10px;
         overflow: visible;
         width: 100%;
-        padding-bottom: max(170px, calc(146px + env(safe-area-inset-bottom) + 24px));
+        padding: 10px 0 calc(var(--touch-dock-space) + 8px);
+        border: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     body.screen-playing .hud > *,
     body.screen-paused .hud > * {
         grid-column: auto;
         grid-row: auto;
+        margin: 0;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header,
+    body.screen-playing .stat-grid,
+    body.screen-paused .stat-grid,
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel,
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel,
+    body.screen-playing .hints,
+    body.screen-paused .hints {
+        border-radius: 10px;
     }
 
     .stat-grid {
@@ -1969,20 +2012,18 @@ body.screen-menu .mode-card-footer b {
 
     .hints,
     body.screen-playing .control-panel,
-    body.screen-paused .control-panel { display: none; }
+    body.screen-paused .control-panel {
+        display: none;
+    }
 
     body.screen-playing .touch-pad {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        position: sticky;
-        bottom: 0;
-        z-index: 8;
-        width: 100%;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
-        background: linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(7, 10, 18, 0.88) 26%, rgba(7, 10, 18, 0.96));
     }
 
-    body.screen-paused .touch-pad { display: none; }
+    body.screen-paused .touch-pad {
+        display: none;
+    }
+
     .screen { padding: 20px; }
 
     body.screen-menu #menuScreen {
@@ -2138,23 +2179,24 @@ body.screen-menu .mode-card-footer b {
     .touch-pad button {
         min-width: 0;
     }
+}
 
-    body.screen-playing .preview-grid,
-    body.screen-paused .preview-grid,
-    body.screen-playing .control-panel,
-    body.screen-paused .control-panel,
-    body.screen-playing .hints,
-    body.screen-paused .hints {
-        display: none;
+@media (max-width: 680px) {
+    body.screen-playing .app-shell,
+    body.screen-paused .app-shell {
+        width: min(100vw - 16px, 520px);
+        gap: 10px;
     }
 
-    body.screen-playing .hud-header,
-    body.screen-paused .hud-header,
-    body.screen-playing .progress-panel,
-    body.screen-paused .progress-panel,
-    body.screen-playing .stat-grid,
-    body.screen-paused .stat-grid {
-        grid-column: 1 / -1;
+    body.screen-playing .board-frame,
+    body.screen-paused .board-frame {
+        width: min(100%, clamp(228px, 72vw, 320px));
+        max-height: min(54vh, 620px);
+    }
+
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        --touch-dock-space: calc(196px + env(safe-area-inset-bottom));
     }
 
     body.screen-playing .hud-header,
@@ -2182,47 +2224,142 @@ body.screen-menu .mode-card-footer b {
         padding: 10px 12px;
     }
 
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
+    body.screen-playing .control-panel,
+    body.screen-paused .control-panel,
+    body.screen-playing .hints,
+    body.screen-paused .hints,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel {
+        display: none;
+    }
+
     body.screen-playing .stat-grid,
     body.screen-paused .stat-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
+    }
+
+    body.screen-playing .stat:nth-child(2),
+    body.screen-paused .stat:nth-child(2) {
+        display: none;
+    }
+
+    body.screen-playing .stat,
+    body.screen-paused .stat {
+        min-height: 58px;
+        padding: 8px 10px;
+    }
+
+    body.screen-playing .touch-pad {
+        position: fixed;
+        left: 50%;
+        right: auto;
+        bottom: 0;
+        z-index: 10;
+        width: min(calc(100vw - 16px), 520px);
+        transform: translateX(-50%);
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 14px 12px calc(12px + env(safe-area-inset-bottom));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px 18px 0 0;
+        background:
+            linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(7, 10, 18, 0.92) 22%, rgba(7, 10, 18, 0.98)),
+            rgba(13, 20, 36, 0.96);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.35);
     }
 }
 
-@media (pointer: coarse) and (min-width: 861px) and (max-width: 1180px) {
+@media (min-width: 681px) and (max-width: 860px) {
+    body.screen-playing .app-shell,
+    body.screen-paused .app-shell {
+        width: min(100vw - 24px, 760px);
+        gap: 14px;
+    }
+
+    body.screen-playing .board-frame,
+    body.screen-paused .board-frame {
+        width: min(100%, clamp(300px, 46vw, 378px));
+        max-height: min(58vh, 700px);
+    }
+
+    body.screen-playing .hud,
+    body.screen-paused .hud {
+        --touch-dock-space: calc(188px + env(safe-area-inset-bottom));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel,
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
+    body.screen-playing .touch-pad,
+    body.screen-paused .touch-pad {
+        grid-column: 1 / -1;
+    }
+
+    body.screen-playing .hud-header,
+    body.screen-paused .hud-header {
+        padding: 14px 16px;
+    }
+
+    body.screen-playing .hud h2,
+    body.screen-paused .hud h2 {
+        font-size: 18px;
+    }
+
+    body.screen-playing .stat-grid,
+    body.screen-paused .stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    body.screen-playing .preview-grid,
+    body.screen-paused .preview-grid,
     body.screen-playing .control-panel,
-    body.screen-paused .control-panel {
+    body.screen-paused .control-panel,
+    body.screen-playing .hints,
+    body.screen-paused .hints,
+    body.screen-playing .progress-panel,
+    body.screen-paused .progress-panel {
         display: none;
     }
 
     body.screen-playing .touch-pad {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-        padding: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(13, 20, 36, 0.72);
-    }
-
-    body.screen-playing .touch-pad button {
-        min-height: 58px;
-        font-size: 20px;
-        border-radius: 14px;
-        background: rgba(30, 42, 68, 0.95);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
+        position: fixed;
+        left: 50%;
+        right: auto;
+        bottom: 0;
+        z-index: 10;
+        width: min(calc(100vw - 24px), 760px);
+        transform: translateX(-50%);
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px 18px 0 0;
+        background:
+            linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(8, 12, 22, 0.92) 24%, rgba(8, 12, 22, 0.98)),
+            rgba(13, 20, 36, 0.94);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.28);
     }
 }
 
 @media (max-width: 1180px) and (min-width: 861px) {
     body.screen-playing .app-shell,
     body.screen-paused .app-shell {
-        width: min(100vw - 20px, 1120px);
+        width: min(100vw - 20px, 1160px);
         height: calc(100vh - 20px);
-        grid-template-columns: minmax(280px, 34vw) minmax(0, 1fr);
+        grid-template-columns: minmax(320px, min(38vw, calc((100vh - 44px) / 2))) minmax(360px, 1fr);
         grid-template-rows: 1fr;
-        gap: 12px;
+        gap: 14px;
         align-items: stretch;
     }
 
@@ -2230,12 +2367,13 @@ body.screen-menu .mode-card-footer b {
     body.screen-paused .playfield-panel {
         grid-column: 1;
         grid-row: 1;
+        padding: 12px;
     }
 
     body.screen-playing .board-frame,
     body.screen-paused .board-frame {
         height: auto;
-        max-height: calc(100vh - 56px);
+        max-height: calc(100vh - 48px);
         aspect-ratio: 10 / 20;
     }
 
@@ -2243,12 +2381,15 @@ body.screen-menu .mode-card-footer b {
     body.screen-paused .hud {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        padding: 12px;
+        gap: 12px;
+        padding: 0;
         overflow: auto;
         align-content: start;
         grid-column: 2;
         grid-row: 1;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     body.screen-playing .hud > *,
@@ -2265,17 +2406,37 @@ body.screen-menu .mode-card-footer b {
     body.screen-playing .preview-grid,
     body.screen-paused .preview-grid,
     body.screen-playing .progress-panel,
-    body.screen-paused .progress-panel {
+    body.screen-paused .progress-panel,
+    body.screen-playing .touch-pad,
+    body.screen-paused .touch-pad {
         grid-column: 1 / -1;
     }
 
     body.screen-playing .control-panel,
     body.screen-paused .control-panel {
+        display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
     }
 
     body.screen-playing .hints,
     body.screen-paused .hints {
+        display: none;
+    }
+}
+
+@media (pointer: coarse) and (min-width: 861px) and (max-width: 1180px) {
+    body.screen-playing .touch-pad {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        background: rgba(13, 20, 36, 0.78);
+    }
+
+    body.screen-paused .touch-pad {
         display: none;
     }
 }
@@ -2308,9 +2469,12 @@ body.screen-menu .mode-card-footer b {
         grid-row: 1;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-        padding: 10px;
+        padding: 0;
         overflow: auto;
         align-content: start;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     body.screen-playing .hud-header,
@@ -2327,10 +2491,14 @@ body.screen-menu .mode-card-footer b {
     }
 
     body.screen-playing .hints,
-    body.screen-paused .hints,
+    body.screen-paused .hints {
+        display: none;
+    }
+
     body.screen-playing .control-panel,
     body.screen-paused .control-panel {
-        display: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     body.screen-playing .touch-pad {
@@ -2340,7 +2508,7 @@ body.screen-menu .mode-card-footer b {
         position: sticky;
         bottom: 0;
         z-index: 8;
-        padding-top: 6px;
+        padding: 8px 0 0;
         background: linear-gradient(180deg, rgba(7, 10, 18, 0), rgba(7, 10, 18, 0.92) 36%);
     }
 
@@ -2566,25 +2734,50 @@ button:active::after {
 }
 
 /* --- Touch pad improvements --- */
-@media (max-width: 860px) {
+@media (max-width: 1180px) {
     .touch-pad {
-        gap: 10px;
-        padding: 12px;
+        grid-auto-flow: row dense;
+        align-items: stretch;
     }
+
     .touch-pad button {
-        min-width: 56px;
+        min-width: 0;
         min-height: 56px;
-        font-size: 20px;
+        padding: 0 10px;
         border-radius: 14px;
-        background: rgba(30, 42, 68, 0.95);
+        background:
+            linear-gradient(180deg, rgba(39, 52, 80, 0.98), rgba(25, 34, 54, 0.98)),
+            rgba(30, 42, 68, 0.95);
         border: 1px solid rgba(255, 255, 255, 0.14);
-        transition: background 0.1s ease, transform 0.08s ease;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        font-size: 20px;
+        transition: background 0.1s ease, transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
         -webkit-tap-highlight-color: transparent;
         user-select: none;
     }
+
+    .touch-pad button[data-action="hold"],
+    .touch-pad button[data-action="pause"],
+    .touch-pad button[data-command="pause"],
+    .touch-pad button[data-command="restart"] {
+        font-size: 15px;
+        letter-spacing: 0;
+    }
+
+    .touch-pad button[data-action="toggle-ai"],
+    .touch-pad button[data-action="ai"],
+    .touch-pad button[data-command="toggle-ai"] {
+        background:
+            linear-gradient(180deg, rgba(24, 103, 130, 0.95), rgba(18, 60, 86, 0.95)),
+            rgba(56, 189, 248, 0.18);
+        border-color: rgba(56, 189, 248, 0.34);
+        color: #dff6ff;
+    }
+
     .touch-pad button:active {
         background: rgba(36, 217, 143, 0.25);
-        transform: scale(0.92);
+        border-color: rgba(36, 217, 143, 0.42);
+        transform: scale(0.94);
     }
 }
 
@@ -2660,7 +2853,7 @@ select:focus-visible {
 }
 
 /* --- Mobile: better spacing --- */
-@media (max-width: 860px) {
+@media (max-width: 680px) {
     .hud {
         gap: 10px;
     }

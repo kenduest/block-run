@@ -72,6 +72,7 @@ const elements = {
     achievementList: document.getElementById("achievementList"),
     replayList: document.getElementById("replayList"),
     aiAssistButton: document.getElementById("aiAssistButton"),
+    touchAiAssistButton: document.getElementById("touchAiAssistButton"),
     marathonEndlessSetting: document.getElementById("marathonEndlessSetting"),
     dasSetting: document.getElementById("dasSetting"),
     arrSetting: document.getElementById("arrSetting"),
@@ -1005,14 +1006,20 @@ function updateLiveHud() {
 }
 
 function refreshAiAssistButton() {
-    elements.aiAssistButton.textContent = state.demo.enabled ? TEXT.actions.cancelAiAssist : TEXT.actions.aiAssist;
-    elements.aiAssistButton.classList.toggle("active", state.demo.enabled);
-    elements.aiAssistButton.disabled = !state.player.matrix
+    const assistButtons = [elements.aiAssistButton, elements.touchAiAssistButton].filter(Boolean);
+    const label = state.demo.enabled ? TEXT.actions.cancelAiAssist : TEXT.actions.aiAssist;
+    const disabled = !state.player.matrix
         || state.screen === "menu"
         || state.screen === "stageSelect"
         || state.screen === "settings"
         || state.screen === "profile"
         || state.screen === "result";
+    assistButtons.forEach(button => {
+        button.textContent = label;
+        button.classList.toggle("active", state.demo.enabled);
+        button.disabled = disabled;
+        button.setAttribute("aria-pressed", state.demo.enabled ? "true" : "false");
+    });
 }
 
 function runDemo(deltaTime) {
