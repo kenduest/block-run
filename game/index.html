@@ -242,22 +242,18 @@
 
             <section class="touch-pad" aria-label="觸控控制" data-i18n-aria-label="static.touchAria">
                 <div class="touch-toolbar" role="group" aria-label="快速操作">
-                    <button type="button" id="touchAiAssistButton" class="wide ai-action" data-command="toggle-ai" data-i18n="actions.aiAssist">AI 接手</button>
+                    <button type="button" id="touchAiAssistButton" class="ai-action" data-command="toggle-ai" data-i18n="actions.aiAssist">AI 接手</button>
                     <button type="button" data-action="hold" data-i18n="actions.hold">保留</button>
                     <button type="button" data-command="pause" data-i18n="actions.pause">暫停</button>
                     <button type="button" data-command="restart" data-i18n="actions.restart">重開</button>
+                    <button type="button" data-action="drop" aria-label="硬降">⤓</button>
                 </div>
-                <div class="touch-clusters">
-                    <div class="touch-cluster touch-cluster-move" role="group" aria-label="移動">
-                        <button type="button" data-action="left" aria-label="向左">←</button>
-                        <button type="button" data-action="down" aria-label="軟降">↓</button>
-                        <button type="button" data-action="right" aria-label="向右">→</button>
-                    </div>
-                    <div class="touch-cluster touch-cluster-actions" role="group" aria-label="旋轉與落下">
-                        <button type="button" data-action="rotateReverse" aria-label="反向旋轉">↺</button>
-                        <button type="button" data-action="rotate" aria-label="旋轉">↻</button>
-                        <button type="button" data-action="drop" aria-label="硬降">⤓</button>
-                    </div>
+                <div class="touch-primary" role="group" aria-label="主要控制">
+                    <button type="button" data-action="left" aria-label="向左">←</button>
+                    <button type="button" data-action="rotateReverse" aria-label="反向旋轉">↺</button>
+                    <button type="button" data-action="down" aria-label="軟降">↓</button>
+                    <button type="button" data-action="rotate" aria-label="旋轉">↻</button>
+                    <button type="button" data-action="right" aria-label="向右">→</button>
                 </div>
             </section>
         </aside>
