@@ -1,6 +1,7 @@
 import { Renderer } from "./renderer.js?v=__APP_VERSION__";
 import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=__APP_VERSION__";
-import { TEXT, applyStaticText } from "./i18n.js?v=__APP_VERSION__";
+import { TEXT, applyStaticText, joinText, setLanguage } from "./i18n.js?v=__APP_VERSION__";
+import { ACHIEVEMENT_IDS, achievementLabel, describeAchievementProgress, isNewBest, resultGrade, resultGradeHint, resultGradeText, unlockAchievements } from "./progression.js?v=__APP_VERSION__";
 import {
     MODES,
     STAGES,
@@ -9,16 +10,14 @@ import {
     currentStage,
     formatPreciseTime,
     formatTime,
-    getModeList,
-    objectiveLabel,
-    stageSpeedText,
+    refreshLocalizedContent,
+    stageGoalSummary,
     todayKey,
 } from "./modes.js?v=__APP_VERSION__";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, unlockAchievements, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=__APP_VERSION__";
+import { loadData, markStageComplete, recordGame, resetRecords, saveData, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=__APP_VERSION__";
 import {
     COLS,
     ARENA_ROWS,
-    ROWS,
     collide,
     countGarbageCells,
     createMatrix,
@@ -38,9 +37,15 @@ import {
     BOARD_DOUBLE_TAP_MS,
     isBoardDoubleTap,
     resolveBoardTapAction,
+    resolveBoardSwipeAction,
 } from "./touch.js?v=__APP_VERSION__";
 
+const APP_VERSION = "__APP_VERSION__";
+const DISPLAY_VERSION = APP_VERSION.includes("__APP_VERSION__") ? "dev" : APP_VERSION;
+const SHORT_DISPLAY_VERSION = DISPLAY_VERSION === "dev" ? "dev" : DISPLAY_VERSION.slice(0, 7);
+
 const elements = {
+    appVersionBadge: document.getElementById("appVersionBadge"),
     board: document.getElementById("board"),
     next: document.getElementById("next"),
     hold: document.getElementById("hold"),
@@ -72,13 +77,23 @@ const elements = {
     resultTitle: document.getElementById("resultTitle"),
     resultLabel: document.getElementById("resultLabel"),
     resultStats: document.getElementById("resultStats"),
+    resultGrade: document.getElementById("resultGradeValue"),
+    resultGradeHint: document.getElementById("resultGradeHint"),
+    resultRecordBadge: document.getElementById("resultNewRecordBadge"),
     achievementNotice: document.getElementById("achievementNotice"),
     profileSummary: document.getElementById("profileSummary"),
     achievementList: document.getElementById("achievementList"),
     replayList: document.getElementById("replayList"),
+    feedbackOverlay: document.getElementById("feedbackOverlay"),
+    feedbackTag: document.getElementById("feedbackTag"),
+    feedbackTitle: document.getElementById("feedbackPrimary"),
+    feedbackDetail: document.getElementById("feedbackSecondary"),
+    feedbackTimer: document.getElementById("feedbackTimer"),
+    feedbackTimerValue: document.getElementById("feedbackTimerValue"),
     aiAssistButton: document.getElementById("aiAssistButton"),
     touchAiAssistButton: document.getElementById("touchAiAssistButton"),
     marathonEndlessSetting: document.getElementById("marathonEndlessSetting"),
+    languageSetting: document.getElementById("languageSetting"),
     dasSetting: document.getElementById("dasSetting"),
     arrSetting: document.getElementById("arrSetting"),
     softDropSetting: document.getElementById("softDropSetting"),
@@ -90,10 +105,20 @@ const elements = {
     lockDelayValue: document.getElementById("lockDelayValue"),
     ghostSetting: document.getElementById("ghostSetting"),
     soundSetting: document.getElementById("soundSetting"),
+    soundVolumeSetting: document.getElementById("soundVolumeSetting"),
     effectsSetting: document.getElementById("effectsSetting"),
     skinSetting: document.getElementById("skinSetting"),
     hintsSetting: document.getElementById("hintsSetting"),
+    soundVolumeValue: document.getElementById("soundVolumeValue"),
+    pauseFocusValue: document.getElementById("pauseFocusValue"),
+    pauseInputValue: document.getElementById("pauseInputValue"),
+    pauseExitValue: document.getElementById("pauseExitValue"),
 };
+
+if (elements.appVersionBadge) {
+    elements.appVersionBadge.textContent = `v${SHORT_DISPLAY_VERSION}`;
+    elements.appVersionBadge.title = `build ${DISPLAY_VERSION}`;
+}
 
 const renderer = new Renderer(elements.board, elements.next, elements.hold);
 const data = loadData();
@@ -106,6 +131,7 @@ const state = {
     score: 0,
     lines: 0,
     level: 1,
+    b2bChain: 0,
     combo: -1,
     maxCombo: 0,
     lastClear: 0,
@@ -137,6 +163,9 @@ const state = {
     canHold: true,
     settings: data.settings,
     demo: { enabled: false, move: null, stepMs: 0 },
+    latestAchievements: [],
+    lastResultGrade: "C",
+    lastRunNewRecord: false,
 };
 
 let bag = [];
@@ -150,20 +179,18 @@ let previousLevel = 1;
 let settingsReturnScreen = "menu";
 let pendingBoardTap = null;
 let previousBoardTap = null;
+let boardPointerDown = null;
+let boardFeedbackTimer = null;
 const keyState = {
     left: { down: false, das: 0, arr: 0 },
     right: { down: false, das: 0, arr: 0 },
     down: false,
 };
 
-const MENU_GROUPS = TEXT.menu.groups;
-const MENU_CARD_TEXT = TEXT.menu.cards;
-
 init();
 
 function init() {
-    document.title = TEXT.app.title;
-    applyStaticText();
+    applyLanguage(state.settings.language);
     renderer.resize();
     buildModeMenu();
     buildStageMenu();
@@ -174,12 +201,41 @@ function init() {
     requestAnimationFrame(update);
 }
 
+function applyLanguage(setting) {
+    refreshLanguageResources(setting);
+    refreshLanguageDependentViews();
+    refreshCurrentScreenContent();
+    applyUiState();
+}
+
+function refreshLanguageResources(setting) {
+    setLanguage(setting);
+    refreshLocalizedContent();
+    document.title = TEXT.app.title;
+    applyStaticText();
+}
+
+function refreshLanguageDependentViews() {
+    buildModeMenu();
+    buildStageMenu();
+    syncSettingsForm();
+}
+
+function refreshCurrentScreenContent() {
+    refreshComboBanner();
+    syncFeedbackOverlayState();
+    if (state.screen === "paused") renderPauseSummary();
+    if (state.screen === "profile") renderProfile();
+    if (state.screen === "result") renderResult(state.latestAchievements);
+}
+
 function buildModeMenu() {
     elements.modeList.innerHTML = "";
-    const selectedGroup = MENU_GROUPS.find(group => group.id === activeMenuGroup) || MENU_GROUPS[0];
+    const menuGroups = TEXT.menu.groups;
+    const selectedGroup = menuGroups.find(group => group.id === activeMenuGroup) || menuGroups[0];
     const tabs = document.createElement("div");
     tabs.className = "mode-tabs";
-    for (const group of MENU_GROUPS) {
+    for (const group of menuGroups) {
         const tab = document.createElement("button");
         tab.type = "button";
         tab.className = group.id === selectedGroup.id ? "active" : "";
@@ -207,11 +263,11 @@ function createModeButton(mode) {
     button.type = "button";
     button.dataset.mode = mode.id;
     button.title = mode.description;
-    button.setAttribute("aria-label", `${mode.label}，${mode.category}，${mode.description}`);
+    button.setAttribute("aria-label", joinText([mode.label, mode.category, mode.description]));
     const progress = mode.id === "stages"
-        ? `${data.completedStages.length}/${STAGES.length} 關`
+        ? TEXT.menu.stageProgress(data.completedStages.length, STAGES.length)
         : bestLabel(mode.id);
-    const text = MENU_CARD_TEXT[mode.id] || { title: mode.label, cue: mode.category };
+    const text = TEXT.menu.cards[mode.id] || { title: mode.label, cue: mode.category };
     button.innerHTML = `
         <span class="mode-card-copy">
             <strong>${text.title}</strong>
@@ -264,7 +320,7 @@ function createProfileButton() {
         </span>
         <span class="mode-card-footer">
             <b>${text.action}</b>
-            <small>${totalStars()} 星</small>
+            <small>${TEXT.menu.starsProgress(totalStars())}</small>
         </span>
     `;
     button.addEventListener("click", showProfile);
@@ -283,7 +339,7 @@ function buildStageMenu() {
             <span class="stage-copy">
                 <strong>${stage.name}</strong>
                 <span>${stage.description}</span>
-                <small>${stageGoalText(stage)}</small>
+                <small>${stageGoalSummary(stage)}</small>
             </span>
             <span class="stage-meta">
                 <b>${stage.chapter}</b>
@@ -351,8 +407,7 @@ function bindEvents() {
     document.querySelectorAll("[data-settings-tab]").forEach(button => {
         button.addEventListener("click", () => showSettingsPanel(button.dataset.settingsTab));
     });
-
-bindSettingControls();
+    bindSettingControls();
     elements.quickSoundToggle.addEventListener("click", () => {
         updateSetting("soundEnabled", !state.settings.soundEnabled);
         syncSettingsForm();
@@ -400,13 +455,27 @@ function bindTouchPadControls() {
 }
 
 function bindBoardTouchControls() {
+    elements.board.addEventListener("pointerdown", event => {
+        if (!isBoardTouchPointer(event)) return;
+        boardPointerDown = { x: event.clientX, y: event.clientY, time: Date.now() };
+    });
     elements.board.addEventListener("pointerup", event => {
         if (!isBoardTouchPointer(event)) return;
         if (state.screen !== "playing" || !state.player.matrix) return;
         event.preventDefault();
 
+        const pointerUp = { x: event.clientX, y: event.clientY, time: Date.now() };
+        const swipeAction = resolveBoardSwipeAction(boardPointerDown, pointerUp);
+        boardPointerDown = null;
+        if (swipeAction) {
+            clearPendingBoardTap();
+            previousBoardTap = null;
+            action(swipeAction);
+            return;
+        }
+
         const rect = elements.board.getBoundingClientRect();
-        const tap = { x: event.clientX, y: event.clientY, time: Date.now() };
+        const tap = pointerUp;
         if (isBoardDoubleTap(previousBoardTap, tap)) {
             clearPendingBoardTap();
             previousBoardTap = null;
@@ -500,7 +569,7 @@ function startDemo() {
     startMode(["sprint", "dig"].includes(state.mode) ? state.mode : "marathon");
     state.demo.enabled = true;
     state.demo.move = chooseAutoMove(state.arena, state.player);
-    elements.combo.textContent = TEXT.game.aiDemo;
+    refreshComboBanner();
     applyUiState();
 }
 
@@ -509,7 +578,7 @@ function toggleAiAssist() {
     state.demo.enabled = !state.demo.enabled;
     state.demo.move = state.demo.enabled ? chooseAutoMove(state.arena, state.player) : null;
     state.demo.stepMs = 0;
-    elements.combo.textContent = state.demo.enabled ? TEXT.game.aiActive : "";
+    refreshComboBanner();
     if (state.screen === "paused" && state.demo.enabled) resumeGame();
     applyUiState();
 }
@@ -518,6 +587,7 @@ function resetState() {
     state.score = 0;
     state.lines = 0;
     state.level = 1;
+    state.b2bChain = 0;
     state.combo = -1;
     state.maxCombo = 0;
     state.lastClear = 0;
@@ -541,6 +611,8 @@ function resetState() {
     state.garbageTickMs = 0;
     state.result = "playing";
     state.gameOver = false;
+    state.lastResultGrade = "C";
+    state.lastRunNewRecord = false;
     state.arena = createMatrix(COLS, ARENA_ROWS);
     state.player = { pos: { x: 0, y: 0 }, matrix: null, type: null, rotation: 0 };
     state.nextQueue = [];
@@ -575,7 +647,7 @@ function configureRun(modeId) {
         state.rng = createRng(state.seed);
     }
     if (modeId === "mystery" || stage?.modifiers?.mystery) {
-        state.mystery = { nextInMs: 30000, activeLabel: TEXT.game.activeLabel, speedMultiplier: 1, activeMs: 0, events: 0 };
+        state.mystery = { nextInMs: 30000, activeLabel: TEXT.game.activeLabel, speedMultiplier: 1, activeMs: 0, events: 0, warningShown: false };
     }
 }
 
@@ -688,23 +760,37 @@ function lockPiece() {
     state.garbageCells = countGarbageCells(state.arena);
     state.lastClear = clearedRows.length;
     if (clearedRows.length) {
+        const isTetrisClear = clearedRows.length === 4;
+        const continuesB2b = isTetrisClear && state.b2bChain > 0;
         state.combo++;
         state.maxCombo = Math.max(state.maxCombo, state.combo);
+        state.b2bChain = isTetrisClear ? state.b2bChain + 1 : 0;
         state.score += scoreClear(clearedRows.length, state.level, state.combo);
         state.lines += clearedRows.length;
-        if (clearedRows.length === 4) state.tetrisCount++;
+        if (isTetrisClear) state.tetrisCount++;
         state.zoneMeter = Math.min(100, state.zoneMeter + clearedRows.length * 12 + (clearedRows.length === 4 ? 12 : 0));
         state.level = Math.floor(state.lines / 10) + 1;
-        for (const y of clearedRows) renderer.burstLine(y, clearedRows.length === 4 ? 26 : 16);
-        if (clearedRows.length === 4) renderer.burstCenter("tetris");
-        elements.combo.textContent = state.combo > 0 ? TEXT.game.combo(state.combo + 1) : TEXT.game.lineClear(clearedRows.length);
+        for (const y of clearedRows) renderer.burstLine(y, isTetrisClear ? 26 : 16);
+        if (isTetrisClear) renderer.burstCenter("tetris");
+        refreshComboBanner();
         elements.combo.classList.remove("animate");
         void elements.combo.offsetWidth;
         elements.combo.classList.add("animate");
         setTimeout(() => elements.combo.classList.remove("animate"), 360);
+        const detailParts = [];
+        if (state.combo > 0) detailParts.push(TEXT.game.combo(state.combo + 1));
+        if (continuesB2b) detailParts.push(backToBackText());
+        showBoardFeedback(
+            isTetrisClear && TEXT.game.tetris ? TEXT.game.tetris : TEXT.game.lineClear(clearedRows.length),
+            joinText(detailParts),
+            isTetrisClear || state.combo >= 3 ? "big" : "combo",
+            isTetrisClear ? 1500 : 1100,
+        );
+        if (state.combo >= 3) pulseBoardShake();
         playLineClearSound(clearedRows.length, state.combo);
     } else {
         state.combo = -1;
+        state.lastClear = 0;
         elements.combo.textContent = "";
     }
     lockCounter = 0;
@@ -712,6 +798,7 @@ function lockPiece() {
     if (state.level > previousLevel) {
         previousLevel = state.level;
         renderer.burstCenter("level");
+        showBoardFeedback(TEXT.game.levelUp || "LEVEL UP!", `${TEXT.hud.level} ${state.level}`, "level", 1400);
         playTone(620, 0.12);
     }
     if (topOut && state.mode !== "zen") {
@@ -746,6 +833,7 @@ function hold() {
 function pauseGame() {
     if (state.screen === "playing") {
         state.screen = "paused";
+        renderPauseSummary();
         applyUiState();
     } else if (state.screen === "paused") {
         resumeGame();
@@ -807,12 +895,17 @@ function updateSetting(key, value) {
     state.settings[key] = value;
     data.settings = state.settings;
     saveData(data);
+    if (key === "language") {
+        applyLanguage(state.settings.language);
+        return;
+    }
     renderer.configure(state.settings);
     syncSettingsForm();
     applyUiState();
     if (key === "nextPreviewCount" || key === "skin") {
         renderer.resize();
-renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+        renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+    }
 
     // Hold indicator: dim when hold is used or disabled
     const holdBox = document.querySelector(".preview-box:has(#hold)");
@@ -821,18 +914,20 @@ renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
         holdBox.classList.toggle("hold-disabled", holdUnavailable);
     }
 }
-}
 
 function resetSettings() {
     state.settings = { ...DEFAULT_SETTINGS };
     data.settings = { ...DEFAULT_SETTINGS };
     saveData(data);
+    applyLanguage(state.settings.language);
     renderer.configure(state.settings);
     syncSettingsForm();
+    applyUiState();
 }
 
 function syncSettingsForm() {
     elements.marathonEndlessSetting.checked = state.settings.marathonEndless;
+    elements.languageSetting.value = state.settings.language;
     elements.dasSetting.value = state.settings.dasMs;
     elements.arrSetting.value = state.settings.arrMs;
     elements.softDropSetting.value = state.settings.softDropMultiplier;
@@ -844,13 +939,16 @@ function syncSettingsForm() {
     elements.lockDelayValue.textContent = `${Math.round(state.settings.lockDelayMs)} ms`;
     elements.ghostSetting.checked = state.settings.ghostEnabled;
     elements.soundSetting.checked = state.settings.soundEnabled;
+    if (elements.soundVolumeSetting) elements.soundVolumeSetting.value = Math.round(currentSoundVolume() * 100);
     elements.effectsSetting.value = state.settings.effectsLevel;
     elements.skinSetting.value = state.settings.skin;
     elements.hintsSetting.checked = state.settings.showHints;
+    if (elements.soundVolumeValue) elements.soundVolumeValue.textContent = `${Math.round(currentSoundVolume() * 100)}%`;
 }
 
 function bindSettingControls() {
     elements.marathonEndlessSetting.addEventListener("change", () => updateSetting("marathonEndless", elements.marathonEndlessSetting.checked));
+    elements.languageSetting.addEventListener("change", () => updateSetting("language", elements.languageSetting.value));
     elements.dasSetting.addEventListener("input", () => updateSetting("dasMs", Number(elements.dasSetting.value)));
     elements.arrSetting.addEventListener("input", () => updateSetting("arrMs", Number(elements.arrSetting.value)));
     elements.softDropSetting.addEventListener("input", () => updateSetting("softDropMultiplier", Number(elements.softDropSetting.value)));
@@ -858,6 +956,7 @@ function bindSettingControls() {
     elements.nextPreviewSetting.addEventListener("change", () => updateSetting("nextPreviewCount", Number(elements.nextPreviewSetting.value)));
     elements.ghostSetting.addEventListener("change", () => updateSetting("ghostEnabled", elements.ghostSetting.checked));
     elements.soundSetting.addEventListener("change", () => updateSetting("soundEnabled", elements.soundSetting.checked));
+    elements.soundVolumeSetting?.addEventListener("input", () => updateSetting("soundVolume", Number(elements.soundVolumeSetting.value) / 100));
     elements.effectsSetting.addEventListener("change", () => updateSetting("effectsLevel", elements.effectsSetting.value));
     elements.skinSetting.addEventListener("change", () => updateSetting("skin", elements.skinSetting.value));
     elements.hintsSetting.addEventListener("change", () => updateSetting("showHints", elements.hintsSetting.checked));
@@ -873,12 +972,19 @@ function finish(result, isGameOver) {
     state.gameOver = isGameOver || result === "failed";
     state.screen = "result";
     const summary = buildRunSummary();
+    state.lastRunNewRecord = isNewBest(summary, data);
+    state.lastResultGrade = resultGrade(summary);
     updateBestScore(data, state.mode, state.score, summary);
     if (state.mode === "stages" && result === "success") markStageComplete(data, currentStage(state).id, summary.stars);
     recordGame(data, summary);
     const achievements = unlockAchievements(data, state);
+    if (achievements.length) saveData(data);
+    state.latestAchievements = achievements;
     renderer.burstCenter(result === "success" ? "level" : "gameover");
     playTone(result === "success" ? 700 : 90, result === "success" ? 0.14 : 0.18);
+    if (state.lastRunNewRecord) {
+        showBoardFeedback(resultNewRecordTitle(), resultNewRecordDetail(), "record", 1800);
+    }
     buildModeMenu();
     buildStageMenu();
     renderResult(achievements);
@@ -904,14 +1010,26 @@ function renderResult(achievements = []) {
             [TEXT.result.fields.best, bestLabel(state.mode)],
             [TEXT.result.fields.lines, state.lines],
             [TEXT.result.fields.level, state.level],
-            [TEXT.result.fields.maxCombo, state.maxCombo > 0 ? `x${state.maxCombo + 1}` : "0"],
+            [TEXT.result.fields.maxCombo, comboValue(state.maxCombo)],
             [TEXT.result.fields.time, timeLabel],
-            ["PPS", pps.toFixed(2)],
-            ["KPP", kpp.toFixed(1)],
+            [TEXT.result.fields.pps, pps.toFixed(2)],
+            [TEXT.result.fields.kpp, kpp.toFixed(1)],
         ];
-    if (state.mode === "stages") stats.push([TEXT.result.fields.stars, `${calculateStageStars(state)} / 3`]);
+    if (state.mode === "stages") stats.push([TEXT.result.fields.stars, TEXT.game.valueSlashTotal(calculateStageStars(state), 3)]);
     elements.resultStats.innerHTML = stats.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
-    elements.achievementNotice.textContent = achievements.length ? `${TEXT.result.achievementPrefix}${achievements.join("、")}` : "";
+    if (elements.resultGrade) {
+        elements.resultGrade.textContent = resultGradeText(state.lastResultGrade);
+        elements.resultGrade.dataset.grade = state.lastResultGrade;
+    }
+    if (elements.resultGradeHint) elements.resultGradeHint.textContent = resultGradeHint(state.lastResultGrade);
+    if (elements.resultRecordBadge) {
+        elements.resultRecordBadge.dataset.state = state.lastRunNewRecord ? "active" : "idle";
+        const badgeValue = elements.resultRecordBadge.querySelector("strong");
+        if (badgeValue) badgeValue.textContent = state.lastRunNewRecord ? resultNewRecordTitle() : (TEXT.result.newRecordPending || "");
+    }
+    elements.achievementNotice.textContent = achievements.length
+        ? `${TEXT.result.achievementPrefix}${achievements.map(achievementLabel).join(TEXT.common.comma)}`
+        : "";
     let gameoverHint = document.getElementById("gameoverHint");
     if (!gameoverHint) {
         gameoverHint = document.createElement("p");
@@ -927,6 +1045,7 @@ function applyUiState() {
     if (state.screen !== "playing") {
         clearPendingBoardTap();
         previousBoardTap = null;
+        boardPointerDown = null;
     }
     for (const [name, screen] of Object.entries(elements.screens)) {
         screen.classList.toggle("active", name === state.screen);
@@ -962,6 +1081,7 @@ function applyUiState() {
         : state.screen === "stageSelect"
             ? TEXT.hud.chooseStage
             : MODES[state.mode].objectiveText(state);
+    if (state.screen === "paused") renderPauseSummary();
     if (state.score !== lastDisplayedScore) {
         elements.score.textContent = state.score;
         elements.score.parentElement.classList.remove("pop");
@@ -992,6 +1112,7 @@ function applyUiState() {
     elements.quickSoundToggle.textContent = state.settings.soundEnabled ? "🔊" : "🔇";
     elements.quickSoundToggle.classList.toggle("muted", !state.settings.soundEnabled);
     renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+    syncFeedbackOverlayState();
 }
 
 function statusText() {
@@ -1002,16 +1123,6 @@ function statusText() {
     if (state.screen === "profile") return TEXT.status.profile;
     if (state.screen === "result") return state.result === "success" ? TEXT.status.success : TEXT.status.ended;
     return TEXT.status.playing;
-}
-
-function stageGoalText(stage) {
-    const target = objectiveLabel(stage.objective);
-    const limit = stage.timeLimitMs
-        ? TEXT.game.secondsLimit(Math.round(stage.timeLimitMs / 1000))
-        : stage.pieceLimit
-            ? TEXT.game.pieceLimit(stage.pieceLimit)
-            : TEXT.game.noLimit;
-    return TEXT.game.stageGoal(target, limit, stage.startingGarbage, stageSpeedText(stage));
 }
 
 function update(time = 0) {
@@ -1052,6 +1163,30 @@ function updateLiveHud() {
     elements.progressValue.textContent = progress.value;
     elements.progressBar.style.width = `${Math.max(0, Math.min(1, progress.ratio)) * 100}%`;
     refreshAiAssistButton();
+    if (state.screen === "paused") renderPauseSummary();
+}
+
+function refreshComboBanner() {
+    if (!["playing", "paused"].includes(state.screen)) return;
+    if (state.mystery?.activeMs > 0 && state.mystery?.activeLabel) {
+        elements.combo.textContent = TEXT.game.mystery(state.mystery.activeLabel);
+        return;
+    }
+    if (state.demo.enabled) {
+        elements.combo.textContent = TEXT.game.aiActive;
+        return;
+    }
+    if (state.b2bChain > 1 && state.lastClear === 0) {
+        elements.combo.textContent = backToBackText();
+        return;
+    }
+    if (state.lastClear > 0) {
+        const fragments = [state.combo > 0 ? TEXT.game.combo(state.combo + 1) : TEXT.game.lineClear(state.lastClear)];
+        if (state.b2bChain > 1) fragments.push(backToBackText());
+        elements.combo.textContent = joinText(fragments.filter(Boolean));
+        return;
+    }
+    elements.combo.textContent = "";
 }
 
 function refreshAiAssistButton() {
@@ -1166,6 +1301,14 @@ function updateModeEvents(deltaTime) {
             state.hiddenBlocksActive = false;
             state.mystery.speedMultiplier = 1;
         }
+        if (!state.mystery.warningShown && state.mystery.nextInMs > 0 && state.mystery.nextInMs <= 3000) {
+            state.mystery.warningShown = true;
+            showBoardFeedback(mysteryWarningTitle(), mysteryWarningDetail(), "warning", 1100);
+        }
+        if (state.mystery.warningShown && state.mystery.nextInMs > 0 && state.mystery.nextInMs <= 3000 && elements.feedbackTimer && elements.feedbackTimerValue) {
+            elements.feedbackTimer.hidden = false;
+            elements.feedbackTimerValue.textContent = formatTime(state.mystery.nextInMs);
+        }
         if (state.mystery.nextInMs <= 0) triggerMysteryEvent();
     }
 }
@@ -1197,7 +1340,10 @@ function triggerMysteryEvent() {
     events[Math.floor(state.rng() * events.length)]();
     state.mystery.events++;
     state.mystery.nextInMs = 30000;
-    elements.combo.textContent = TEXT.game.mystery(state.mystery.activeLabel);
+    if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
+    state.mystery.warningShown = false;
+    showBoardFeedback(TEXT.game.mystery(state.mystery.activeLabel), backToBackText(false), "warning", 1500);
+    refreshComboBanner();
 }
 
 function clearZenBoard() {
@@ -1271,6 +1417,10 @@ function bestLabel(modeId) {
     return `${TEXT.best.prefix} ${Number(best) || 0}`;
 }
 
+function comboValue(comboCount) {
+    return comboCount > 0 ? TEXT.game.comboValue(comboCount + 1) : "0";
+}
+
 function totalStars() {
     return Object.values(data.stageStars).reduce((sum, stars) => sum + Number(stars || 0), 0);
 }
@@ -1300,8 +1450,8 @@ function renderProfile() {
         [TEXT.profile.summary.bestSprint, data.bestScores.sprint?.elapsedMs ? formatPreciseTime(data.bestScores.sprint.elapsedMs) : "-"],
         [TEXT.profile.summary.averagePps, averagePps.toFixed(2)],
         [TEXT.profile.summary.tetris, totals.tetris],
-        [TEXT.profile.summary.maxCombo, totals.maxCombo > 0 ? `x${totals.maxCombo + 1}` : "0"],
-        [TEXT.profile.summary.stars, `${totalStars()} / ${STAGES.length * 3}`],
+        [TEXT.profile.summary.maxCombo, comboValue(totals.maxCombo)],
+        [TEXT.profile.summary.stars, TEXT.game.valueSlashTotal(totalStars(), STAGES.length * 3)],
     ];
     elements.profileSummary.innerHTML = `
         <table class="profile-table">
@@ -1310,18 +1460,22 @@ function renderProfile() {
             </tbody>
         </table>
     `;
-    const achievements = Object.values(data.achievements);
-    elements.achievementList.innerHTML = achievements.length
-        ? achievements.map(item => `<li><span>${item.label}</span></li>`).join("")
-        : `<li>${TEXT.profile.emptyAchievements}</li>`;
+    const achievements = Object.keys(data.achievements);
+    elements.achievementList.innerHTML = ACHIEVEMENT_IDS.map(id => {
+        const unlocked = achievements.includes(id);
+        const progress = describeAchievementProgress(id, data, { maxCombo: totals.maxCombo });
+        const label = achievementLabel(id);
+        const suffix = progress && !unlocked ? ` <small>${progress.display}</small>` : "";
+        return `<li data-state="${unlocked ? "unlocked" : "locked"}"><span>${label}${suffix}</span></li>`;
+    }).join("") || `<li>${TEXT.profile.emptyAchievements}</li>`;
     elements.replayList.innerHTML = data.recentReplays.length
         ? `
             <li class="replay-row replay-head"><span>${TEXT.profile.replayHead.mode}</span><span>${TEXT.profile.replayHead.result}</span><span>${TEXT.profile.replayHead.score}</span><span>${TEXT.profile.replayHead.seed}</span></li>
             ${data.recentReplays.map(replay => `
                 <li class="replay-row">
                     <span>${MODES[replay.mode]?.label || replay.mode}</span>
-                    <span>${replay.result.result}</span>
-                    <span>${replay.result.score} 分</span>
+                    <span>${resultText(replay.result.result)}</span>
+                    <span>${replay.result.score}</span>
                     <span>${replay.seed}</span>
                 </li>
             `).join("")}
@@ -1329,10 +1483,17 @@ function renderProfile() {
         : `<li>${TEXT.profile.emptyReplays}</li>`;
 }
 
+function resultText(result) {
+    if (result === "success") return TEXT.status.success;
+    if (result === "failed") return TEXT.status.failed;
+    if (result === "playing") return TEXT.status.playing;
+    return result;
+}
+
 function playTone(frequency, duration, type = "triangle") {
     if (!state.settings.soundEnabled) return;
     audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
-    playScheduledTone(frequency, duration, type, 0, 0.052);
+    playScheduledTone(frequency, duration, type, 0, 0.052 * currentSoundVolume());
 }
 
 function playLineClearSound(cleared, combo = 0) {
@@ -1342,7 +1503,7 @@ function playLineClearSound(cleared, combo = 0) {
     const steps = cleared === 4
         ? [start, start * 1.22, start * 1.5, start * 1.86]
         : [start, start * 1.18, start * (1.36 + cleared * 0.04)];
-    const volume = Math.min(0.085, 0.052 + cleared * 0.008 + Math.max(combo, 0) * 0.003);
+    const volume = Math.min(0.085, 0.052 + cleared * 0.008 + Math.max(combo, 0) * 0.003) * currentSoundVolume();
 
     steps.forEach((frequency, index) => {
         playScheduledTone(frequency, 0.07, index % 2 === 0 ? "triangle" : "square", index * 0.045, volume);
@@ -1365,4 +1526,114 @@ function playScheduledTone(frequency, duration, type = "triangle", delay = 0, vo
     gain.connect(audioContext.destination);
     oscillator.start(startAt);
     oscillator.stop(startAt + duration);
+}
+
+function renderPauseSummary() {
+    if (!elements.pauseSummary) return;
+    const progress = MODES[state.mode]?.progress(state) || { value: "-" };
+    elements.pauseSummary.textContent = pauseSummaryText(progress.value);
+    if (elements.pauseFocusValue) {
+        elements.pauseFocusValue.textContent = joinText([
+            `${TEXT.hud.score} ${state.score}`,
+            `${TEXT.hud.lines} ${state.lines}`,
+            `${TEXT.hud.level} ${state.level}`,
+        ]);
+    }
+    if (elements.pauseInputValue) {
+        elements.pauseInputValue.textContent = joinText([
+            `DAS ${Math.round(state.settings.dasMs)}ms`,
+            `ARR ${Math.round(state.settings.arrMs)}ms`,
+            `Hold ${state.rules.noHold ? "off" : "on"}`,
+        ]);
+    }
+    if (elements.pauseExitValue) {
+        elements.pauseExitValue.textContent = joinText([
+            `${TEXT.result.fields.time} ${formatTime(state.elapsedMs)}`,
+            progress.value,
+        ]);
+    }
+}
+
+function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) {
+    if (!elements.feedbackOverlay || !elements.feedbackTitle || !elements.feedbackDetail) return;
+    elements.feedbackOverlay.hidden = false;
+    elements.feedbackOverlay.setAttribute("aria-hidden", "false");
+    elements.feedbackTitle.textContent = title || "";
+    elements.feedbackDetail.textContent = detail || "";
+    if (elements.feedbackTag) elements.feedbackTag.textContent = feedbackTag(tone);
+    elements.feedbackOverlay.dataset.state = "active";
+    elements.feedbackOverlay.dataset.tone = tone;
+    if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
+    if (boardFeedbackTimer) clearTimeout(boardFeedbackTimer);
+    boardFeedbackTimer = window.setTimeout(() => {
+        elements.feedbackOverlay.dataset.state = "idle";
+        elements.feedbackOverlay.dataset.tone = "";
+        if (elements.feedbackTag) elements.feedbackTag.textContent = TEXT.feedback.combo;
+        elements.feedbackTitle.textContent = TEXT.feedback.readyPrimary;
+        elements.feedbackDetail.textContent = TEXT.feedback.readySecondary;
+        if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
+        syncFeedbackOverlayState();
+    }, duration);
+    if (tone === "big") pulseBoardShake();
+}
+
+function syncFeedbackOverlayState() {
+    if (!elements.feedbackOverlay) return;
+    const shouldShow = ["playing", "paused"].includes(state.screen) || elements.feedbackOverlay.dataset.state === "active";
+    elements.feedbackOverlay.hidden = !shouldShow;
+    elements.feedbackOverlay.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+}
+
+function pulseBoardShake() {
+    document.body.classList.remove("board-shake");
+    void document.body.offsetWidth;
+    document.body.classList.add("board-shake");
+    window.setTimeout(() => document.body.classList.remove("board-shake"), 260);
+}
+
+function backToBackText(fallbackEmpty = true) {
+    if (state.b2bChain <= 1) return fallbackEmpty ? "" : "";
+    return typeof TEXT.game.backToBack === "function" ? TEXT.game.backToBack(state.b2bChain) : `B2B x${state.b2bChain}`;
+}
+
+function feedbackTag(tone) {
+    if (tone === "record") return TEXT.result.newRecordLabel || "Record";
+    if (tone === "level") return TEXT.hud.level || "Level";
+    if (tone === "warning") return TEXT.feedback.mysteryCountdown || "Warning";
+    return TEXT.feedback.combo || "Combo";
+}
+
+function pauseSummaryText(progressValue) {
+    if (typeof TEXT.pause.summaryStats === "function") {
+        return TEXT.pause.summaryStats(MODES[state.mode]?.label || "", progressValue);
+    }
+    return `${MODES[state.mode]?.label || ""} • ${progressValue}`;
+}
+
+function mysteryWarningTitle() {
+    return TEXT.game.mysteryWarningTitle || "MYSTERY";
+}
+
+function mysteryWarningDetail() {
+    if (typeof TEXT.game.mysteryWarningDetail === "function") {
+        return TEXT.game.mysteryWarningDetail(formatTime(Math.max(state.mystery?.nextInMs || 0, 0)));
+    }
+    return `Event in ${formatTime(Math.max(state.mystery?.nextInMs || 0, 0))}`;
+}
+
+function resultNewRecordTitle() {
+    return TEXT.result.newRecord || "NEW RECORD";
+}
+
+function resultNewRecordDetail() {
+    if (typeof TEXT.result.newRecordDetail === "function") {
+        return TEXT.result.newRecordDetail(bestLabel(state.mode).replace(new RegExp(`^${TEXT.best.prefix}\\s*`), ""));
+    }
+    return "";
+}
+
+function currentSoundVolume() {
+    const normalized = Number(state.settings.soundVolume);
+    if (Number.isFinite(normalized)) return Math.max(0, Math.min(1, normalized));
+    return 0.8;
 }

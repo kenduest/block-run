@@ -12,10 +12,24 @@
         <section class="playfield-panel" aria-label="遊戲區" data-i18n-aria-label="static.playfieldAria">
             <div class="board-frame">
                 <canvas id="board" width="320" height="640" aria-label="方塊棋盤" data-i18n-aria-label="static.boardAria"></canvas>
+                <div id="feedbackOverlay" class="feedback-overlay" data-state="idle" aria-live="polite" aria-hidden="true" hidden>
+                    <div class="feedback-overlay-inner">
+                        <p id="feedbackTag" class="feedback-tag" data-i18n="feedback.combo">連擊</p>
+                        <strong id="feedbackPrimary" class="feedback-primary" data-i18n="feedback.readyPrimary">READY</strong>
+                        <p id="feedbackSecondary" class="feedback-secondary" data-i18n="feedback.readySecondary">即時回饋會顯示在這裡。</p>
+                        <div id="feedbackTimer" class="feedback-timer" hidden>
+                            <span data-i18n="feedback.mysteryCountdown">下一事件</span>
+                            <b id="feedbackTimerValue">0:30</b>
+                        </div>
+                    </div>
+                </div>
                 <div id="screenLayer" class="screen-layer">
                     <section id="menuScreen" class="screen active" aria-label="主選單" data-i18n-aria-label="static.menuAria">
                         <div class="brand-block">
-                            <p class="overline" data-i18n="app.brand">BLOCK RUN</p>
+                            <div class="brand-line">
+                                <p class="overline" data-i18n="app.brand">BLOCK RUN</p>
+                                <span id="appVersionBadge" class="version-badge" aria-label="build version">vdev</span>
+                            </div>
                             <h1 data-i18n="app.title">方塊挑戰</h1>
                         </div>
                         <button type="button" class="menu-settings-button" data-command="open-settings" data-i18n="actions.settings">設定</button>
@@ -35,17 +49,42 @@
                     <section id="pauseScreen" class="screen" aria-label="暫停選單" data-i18n-aria-label="static.pauseAria">
                         <h2 data-i18n="pause.title">暫停</h2>
                         <p id="pauseSummary" data-i18n="pause.summary">調整設定或回到遊戲。</p>
+                        <div class="pause-summary-grid">
+                            <div class="pause-summary-card">
+                                <span class="pause-summary-label" data-i18n="pause.cards.focusLabel">目前焦點</span>
+                                <strong id="pauseFocusValue" data-i18n="pause.cards.focusValue">回到場上前，先看目標與節奏。</strong>
+                            </div>
+                            <div class="pause-summary-card">
+                                <span class="pause-summary-label" data-i18n="pause.cards.inputLabel">操作提示</span>
+                                <strong id="pauseInputValue" data-i18n="pause.cards.inputValue">確認 DAS、ARR、Hold 與旋轉手感。</strong>
+                            </div>
+                            <div class="pause-summary-card">
+                                <span class="pause-summary-label" data-i18n="pause.cards.exitLabel">離場提醒</span>
+                                <strong id="pauseExitValue" data-i18n="pause.cards.exitValue">返回模式不會清設定，但會放棄這局進度。</strong>
+                            </div>
+                        </div>
                         <div class="screen-actions">
                             <button type="button" class="primary" data-command="resume" data-i18n="actions.resume">繼續</button>
                             <button type="button" data-command="restart" data-i18n="actions.restart">重開</button>
                             <button type="button" data-command="open-settings" data-i18n="actions.settings">設定</button>
-                            <button type="button" class="danger-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
+                            <button type="button" class="secondary-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
                         </div>
                     </section>
 
                     <section id="resultScreen" class="screen" aria-label="結算畫面" data-i18n-aria-label="static.resultAria">
                         <p id="resultLabel" class="overline" data-i18n="result.label">RESULT</p>
                         <h2 id="resultTitle" data-i18n="result.done">結算</h2>
+                        <div class="result-meta">
+                            <div class="result-grade-card">
+                                <span class="result-meta-label" data-i18n="result.gradeLabel">表現評級</span>
+                                <strong id="resultGradeValue" class="result-grade-value" data-i18n="result.gradePending">待評級</strong>
+                                <small id="resultGradeHint" data-i18n="result.gradeHint">依分數、效率與通關表現顯示。</small>
+                            </div>
+                            <div id="resultNewRecordBadge" class="result-badge-card" data-state="idle">
+                                <span class="result-meta-label" data-i18n="result.newRecordLabel">新紀錄</span>
+                                <strong data-i18n="result.newRecordPending">尚未刷新紀錄</strong>
+                            </div>
+                        </div>
                         <div id="resultStats" class="result-grid"></div>
                         <p id="achievementNotice" class="achievement-notice"></p>
                         <div class="screen-actions">
@@ -88,6 +127,15 @@
 
                             <section class="settings-group" data-settings-panel="gameplay">
                                 <p class="settings-section"><span data-i18n="settings.tabs.gameplay">遊戲資訊</span> <small data-i18n="settings.appliedByItem">依項目套用</small></p>
+                                <label class="field-row">
+                                    <span><strong data-i18n="settings.gameplay.language">語言</strong><small data-i18n="settings.gameplay.languageHelp">預設可跟隨瀏覽器語言，也可手動指定。</small></span>
+                                    <select id="languageSetting">
+                                        <option value="auto" data-i18n="settings.gameplay.languageAuto">自動偵測</option>
+                                        <option value="en" data-i18n="settings.gameplay.languageEnglish">English</option>
+                                        <option value="zh-Hant" data-i18n="settings.gameplay.languageZhHant">繁體中文</option>
+                                        <option value="ja" data-i18n="settings.gameplay.languageJapanese">日本語</option>
+                                    </select>
+                                </label>
                                 <label class="switch-row">
                                     <span><strong data-i18n="settings.gameplay.endless">Marathon Endless</strong><small data-i18n="settings.gameplay.endlessHelp">Marathon 不以 150 行結束；下一次開始 Marathon 時套用。</small></span>
                                     <input id="marathonEndlessSetting" type="checkbox">
@@ -117,6 +165,11 @@
                                     <span><strong data-i18n="settings.presentation.sound">音效</strong><small data-i18n="settings.presentation.soundHelp">旋轉、落下、消行與結算提示音。</small></span>
                                     <input id="soundSetting" type="checkbox">
                                 </label>
+                                <label class="range-row">
+                                    <span><strong data-i18n="settings.presentation.soundVolume">音量</strong><small data-i18n="settings.presentation.soundVolumeHelp">調整提示音與操作音量大小。</small></span>
+                                    <input id="soundVolumeSetting" type="range" min="0" max="100" step="1">
+                                    <b id="soundVolumeValue" data-i18n="settings.presentation.soundVolumeDefault">100%</b>
+                                </label>
                                 <label class="field-row">
                                     <span><strong data-i18n="settings.presentation.effects">特效強度</strong><small data-i18n="settings.presentation.effectsHelp">消行、升級、結算粒子效果的量。</small></span>
                                     <select id="effectsSetting">
@@ -136,7 +189,7 @@
                                 </label>
                             </section>
                         </div>
-                        <div class="screen-actions">
+                        <div class="screen-actions settings-actions-sticky">
                             <button type="button" class="primary" data-command="close-settings" data-i18n="actions.done">完成</button>
                             <button type="button" data-command="reset-settings" data-i18n="actions.resetDefaults">重置預設</button>
                         </div>
@@ -221,7 +274,7 @@
                 <button type="button" data-command="zen-undo" data-i18n="actions.undo">倒退</button>
                 <button type="button" data-command="zen-clear" data-i18n="actions.clear">清空</button>
                 <button type="button" class="wide ai-action" id="aiAssistButton" data-command="toggle-ai" data-i18n="actions.aiAssist">AI 接手</button>
-                <button type="button" class="wide danger-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
+                <button type="button" class="wide secondary-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
             </section>
 
              <section id="hintsPanel" class="hints">

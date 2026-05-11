@@ -1,5 +1,3 @@
-import { TEXT } from "./i18n.js?v=__APP_VERSION__";
-
 const STORAGE_KEY = "block-run-state-v2";
 const LEGACY_STORAGE_KEYS = [
     "block-run-state-v1",
@@ -8,14 +6,16 @@ const LEGACY_STORAGE_KEYS = [
 ];
 
 export const DEFAULT_SETTINGS = {
+    language: "auto",
     dasMs: 125,
     arrMs: 28,
     softDropMultiplier: 18,
     lockDelayMs: 500,
     nextPreviewCount: 3,
     marathonEndless: false,
-    ghostEnabled: false,
+    ghostEnabled: true,
     soundEnabled: true,
+    soundVolume: 0.8,
     effectsLevel: "normal",
     skin: "premium",
     showHints: true,
@@ -149,30 +149,6 @@ export function recordGame(data, summary) {
     saveData(data);
 }
 
-export function unlockAchievements(data, state) {
-    const unlocked = [];
-    const checks = [
-        ["first_tetris", state.lastClear === 4 || state.tetrisCount > 0, TEXT.achievements.firstTetris],
-        ["first_sprint", state.mode === "sprint" && state.result === "success", TEXT.achievements.firstSprint],
-        ["combo_5", state.maxCombo >= 4, TEXT.achievements.combo5],
-        ["score_10000", state.score >= 10000, TEXT.achievements.score10000],
-        ["stage_clear", state.mode === "stages" && state.result === "success", TEXT.achievements.stageClear],
-        ["no_hold_clear", state.mode === "stages" && state.result === "success" && state.rules?.noHold, TEXT.achievements.noHoldClear],
-        ["dig_clear", state.mode === "dig" && state.result === "success", TEXT.achievements.digClear],
-        ["ultra_target", state.mode === "ultra" && state.score >= 12000, TEXT.achievements.ultraTarget],
-        ["daily_clear", state.mode === "daily" && state.result === "success", TEXT.achievements.dailyClear],
-    ];
-
-    for (const [id, passed, label] of checks) {
-        if (passed && !data.achievements[id]) {
-            data.achievements[id] = { label, unlockedAt: Date.now() };
-            unlocked.push(label);
-        }
-    }
-    if (unlocked.length) saveData(data);
-    return unlocked;
-}
-
 function normalizeData(input) {
     const data = {
         ...structuredClone(DEFAULT_DATA),
@@ -183,12 +159,13 @@ function normalizeData(input) {
         modeTotals: input?.modeTotals && typeof input.modeTotals === "object" ? input.modeTotals : {},
         completedStages: Array.isArray(input?.completedStages) ? input.completedStages : [],
         stageStars: input?.stageStars && typeof input.stageStars === "object" ? input.stageStars : {},
-        achievements: input?.achievements && typeof input.achievements === "object" ? input.achievements : {},
+        achievements: normalizeAchievements(input?.achievements),
         daily: input?.daily && typeof input.daily === "object" ? input.daily : {},
-        recentReplays: Array.isArray(input?.recentReplays) ? input.recentReplays.slice(0, 10) : [],
+        recentReplays: Array.isArray(input?.recentReplays) ? input.recentReplays.slice(0, 10).map(normalizeReplay) : [],
     };
 
     if (!["off", "low", "normal", "high"].includes(data.settings.effectsLevel)) data.settings.effectsLevel = "normal";
+    data.settings.language = normalizeLanguageSetting(data.settings.language);
     if (!["premium", "flat", "classic"].includes(data.settings.skin)) data.settings.skin = "premium";
     if (![0, 1, 3, 5].includes(Number(data.settings.nextPreviewCount))) data.settings.nextPreviewCount = 3;
     data.settings.dasMs = clampNumber(data.settings.dasMs, 60, 260, DEFAULT_SETTINGS.dasMs);
@@ -198,8 +175,67 @@ function normalizeData(input) {
     data.settings.marathonEndless = Boolean(data.settings.marathonEndless);
     data.settings.ghostEnabled = Boolean(data.settings.ghostEnabled);
     data.settings.soundEnabled = data.settings.soundEnabled !== false;
+    data.settings.soundVolume = clampNumber(data.settings.soundVolume, 0, 1, DEFAULT_SETTINGS.soundVolume);
     data.settings.showHints = data.settings.showHints !== false;
     return data;
+}
+
+function normalizeLanguageSetting(value) {
+    if (value === "auto" || value == null) return "auto";
+    const normalized = String(value).trim().toLowerCase();
+    if (!normalized) return "auto";
+    if (normalized.startsWith("ja")) return "ja";
+    if (normalized === "zh" || normalized.startsWith("zh-") || normalized.startsWith("zh_")) return "zh-Hant";
+    if (normalized.startsWith("en")) return "en";
+    return "auto";
+}
+
+function normalizeAchievements(input) {
+    if (!input || typeof input !== "object") return {};
+    const normalized = {};
+    for (const [id, value] of Object.entries(input)) {
+        if (!value) continue;
+        if (typeof value === "object") {
+            normalized[id] = pickFields(value, ["unlockedAt"]);
+            if (!("unlockedAt" in normalized[id])) normalized[id].unlockedAt = Date.now();
+            continue;
+        }
+        normalized[id] = { unlockedAt: Date.now() };
+    }
+    return normalized;
+}
+
+function normalizeReplay(replay) {
+    if (!replay || typeof replay !== "object") return replay;
+    const normalized = pickFields(replay, ["id", "seed", "mode", "stageId", "dailyKey", "inputs", "result"]);
+    normalized.inputs = Array.isArray(normalized.inputs) ? normalized.inputs : [];
+    normalized.result = normalizeReplayResult(normalized.result);
+    return normalized;
+}
+
+function normalizeReplayResult(result) {
+    if (!result || typeof result !== "object") return result;
+    return pickFields(result, [
+        "mode",
+        "result",
+        "score",
+        "lines",
+        "elapsedMs",
+        "piecesPlaced",
+        "pps",
+        "kpp",
+        "maxCombo",
+        "tetrisCount",
+        "stars",
+    ]);
+}
+
+function pickFields(input, allowedKeys) {
+    const output = {};
+    for (const key of allowedKeys) {
+        if (key in input) output[key] = input[key];
+    }
+    return output;
 }
 
 function clampNumber(value, min, max, fallback) {
