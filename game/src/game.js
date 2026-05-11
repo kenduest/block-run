@@ -123,6 +123,7 @@ if (elements.appVersionBadge) {
 const renderer = new Renderer(elements.board, elements.next, elements.hold);
 const data = loadData();
 let activeMenuGroup = "featured";
+let pendingRendererLayoutFrame = null;
 
 const state = {
     screen: "menu",
@@ -551,7 +552,6 @@ function startMode(modeId) {
     configureRun(modeId);
     state.screen = "playing";
     applyUiState();
-    renderer.resize();
     state.startedAt = performance.now();
     previousLevel = state.level;
     spawnPiece();
@@ -1111,8 +1111,17 @@ function applyUiState() {
     refreshAiAssistButton();
     elements.quickSoundToggle.textContent = state.settings.soundEnabled ? "🔊" : "🔇";
     elements.quickSoundToggle.classList.toggle("muted", !state.settings.soundEnabled);
-    renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+    syncRendererLayout();
     syncFeedbackOverlayState();
+}
+
+function syncRendererLayout() {
+    if (pendingRendererLayoutFrame !== null) cancelAnimationFrame(pendingRendererLayoutFrame);
+    pendingRendererLayoutFrame = requestAnimationFrame(() => {
+        pendingRendererLayoutFrame = null;
+        renderer.resize();
+        renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+    });
 }
 
 function statusText() {
