@@ -453,11 +453,27 @@ body.screen-paused .app-shell {
     justify-content: center;
 }
 
+body.screen-paused .app-shell {
+    width: min(100%, 1140px);
+    grid-template-columns:
+        minmax(220px, 280px)
+        minmax(260px, min(32vw, calc((100vh - 64px) / 2)));
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 28px;
+    row-gap: 0;
+    align-items: center;
+}
+
 body.screen-playing .playfield-panel,
 body.screen-paused .playfield-panel {
     grid-column: 2;
     grid-row: 1 / span 4;
     min-height: 0;
+}
+
+body.screen-paused .playfield-panel {
+    grid-column: 2;
+    grid-row: 1;
 }
 
 body.screen-playing .hud,
@@ -500,6 +516,13 @@ body.screen-playing .hints,
 body.screen-paused .hints {
     grid-column: 3;
     grid-row: 3 / span 2;
+}
+
+body.screen-paused .hud-header,
+body.screen-paused .preview-grid,
+body.screen-paused .progress-panel,
+body.screen-paused .touch-pad {
+    display: none;
 }
 
 body.screen-playing .hud-header,
@@ -613,10 +636,57 @@ body.screen-paused .stat-grid {
     gap: 9px;
 }
 
+body.screen-paused .stat-grid {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    gap: 10px;
+    opacity: 0.72;
+    filter: saturate(0.82);
+}
+
 body.screen-playing .stat,
 body.screen-paused .stat {
     min-height: 68px;
     padding: 10px 12px;
+}
+
+body.screen-paused .stat {
+    min-height: 74px;
+}
+
+body.screen-paused #pauseScreen {
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 28px 24px;
+    background: linear-gradient(180deg, rgba(4, 8, 17, 0.64), rgba(4, 8, 17, 0.84));
+    backdrop-filter: blur(7px);
+    text-align: center;
+}
+
+body.screen-paused #pauseScreen h2,
+body.screen-paused #pauseScreen p,
+body.screen-paused #pauseScreen .screen-actions {
+    width: min(100%, 540px);
+}
+
+body.screen-paused #pauseScreen p {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 12px 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(17, 24, 39, 0.72);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.45;
+    text-wrap: balance;
+}
+
+body.screen-paused #pauseScreen .screen-actions {
+    gap: 10px;
 }
 
 body.screen-playing .stat span,
@@ -1350,8 +1420,7 @@ body.screen-settings #settingsScreen .screen-actions {
 }
 
 .result-grade-card,
-.result-badge-card,
-.pause-summary-card {
+.result-badge-card {
     display: grid;
     gap: 6px;
     padding: 14px 16px;
@@ -1359,8 +1428,7 @@ body.screen-settings #settingsScreen .screen-actions {
     background: rgba(24, 32, 51, 0.92);
 }
 
-.result-meta-label,
-.pause-summary-label {
+.result-meta-label {
     color: var(--soft);
     font-size: 11px;
     font-weight: 900;
@@ -1397,18 +1465,6 @@ body.screen-settings #settingsScreen .screen-actions {
 .result-badge-card[data-state="active"] {
     border-color: rgba(245, 158, 11, 0.46);
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.16), 0 16px 32px rgba(245, 158, 11, 0.12);
-}
-
-.pause-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.pause-summary-card strong {
-    color: var(--text);
-    font-size: 15px;
-    line-height: 1.45;
 }
 
 .result-grid div {
@@ -1752,18 +1808,9 @@ body.screen-result.game-over .result-grid div {
     }
 
     body.screen-paused #pauseScreen {
-        justify-content: flex-start;
+        justify-content: center;
         overflow: auto;
         scrollbar-gutter: stable;
-    }
-
-    body.screen-paused .pause-summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        align-items: start;
-    }
-
-    body.screen-paused .pause-summary-card:last-child {
-        grid-column: 1 / -1;
     }
 }
 
@@ -2622,8 +2669,8 @@ body.screen-menu .mode-card-footer b {
     }
 
     body.screen-paused #pauseScreen {
-        gap: 10px;
-        padding: 16px 12px 14px;
+        gap: 12px;
+        padding: 18px 14px 16px;
     }
 
     body.screen-paused #pauseScreen h2 {
@@ -2631,27 +2678,9 @@ body.screen-menu .mode-card-footer b {
     }
 
     body.screen-paused #pauseScreen p {
+        max-width: 28ch;
         font-size: 14px;
         line-height: 1.45;
-    }
-
-    body.screen-paused .pause-summary-grid {
-        gap: 8px;
-    }
-
-    body.screen-paused .pause-summary-card {
-        gap: 5px;
-        padding: 10px 12px;
-    }
-
-    body.screen-paused .pause-summary-label {
-        font-size: 10px;
-        letter-spacing: 0.08em;
-    }
-
-    body.screen-paused .pause-summary-card strong {
-        font-size: 13px;
-        line-height: 1.35;
     }
 
     body.screen-paused #pauseScreen .screen-actions {
@@ -2783,6 +2812,10 @@ body.screen-menu .mode-card-footer b {
         padding: 12px;
     }
 
+    body.screen-paused .playfield-panel {
+        grid-column: 2;
+    }
+
     body.screen-playing .board-frame,
     body.screen-paused .board-frame {
         height: auto;
@@ -2803,6 +2836,14 @@ body.screen-menu .mode-card-footer b {
         border: 0;
         background: transparent;
         box-shadow: none;
+    }
+
+    body.screen-paused .hud {
+        grid-column: 1;
+    }
+
+    body.screen-paused .app-shell {
+        grid-template-columns: minmax(220px, 260px) minmax(320px, min(38vw, calc((100vh - 44px) / 2)));
     }
 
     body.screen-playing .hud > *,
@@ -2834,6 +2875,19 @@ body.screen-menu .mode-card-footer b {
 
     body.screen-playing .hints,
     body.screen-paused .hints {
+        display: none;
+    }
+
+    body.screen-paused .hud {
+        grid-template-columns: 1fr;
+        align-self: center;
+    }
+
+    body.screen-paused .hud-header,
+    body.screen-paused .preview-grid,
+    body.screen-paused .progress-panel,
+    body.screen-paused .control-panel,
+    body.screen-paused .touch-pad {
         display: none;
     }
 }
@@ -2875,6 +2929,10 @@ body.screen-menu .mode-card-footer b {
         grid-row: 1;
     }
 
+    body.screen-paused .playfield-panel {
+        grid-column: 2;
+    }
+
     body.screen-playing .hud,
     body.screen-paused .hud {
         display: grid;
@@ -2888,6 +2946,10 @@ body.screen-menu .mode-card-footer b {
         border: 0;
         background: transparent;
         box-shadow: none;
+    }
+
+    body.screen-paused .hud {
+        grid-column: 1;
     }
 
     body.screen-playing .hud-header,
@@ -2927,6 +2989,23 @@ body.screen-menu .mode-card-footer b {
     body.screen-playing .board-frame,
     body.screen-paused .board-frame {
         max-height: calc(100vh - 28px);
+    }
+
+    body.screen-paused .app-shell {
+        grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+    }
+
+    body.screen-paused .hud {
+        grid-template-columns: 1fr;
+        align-self: center;
+    }
+
+    body.screen-paused .hud-header,
+    body.screen-paused .preview-grid,
+    body.screen-paused .progress-panel,
+    body.screen-paused .control-panel,
+    body.screen-paused .touch-pad {
+        display: none;
     }
 }
 

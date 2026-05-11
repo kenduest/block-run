@@ -110,9 +110,6 @@ const elements = {
     skinSetting: document.getElementById("skinSetting"),
     hintsSetting: document.getElementById("hintsSetting"),
     soundVolumeValue: document.getElementById("soundVolumeValue"),
-    pauseFocusValue: document.getElementById("pauseFocusValue"),
-    pauseInputValue: document.getElementById("pauseInputValue"),
-    pauseExitValue: document.getElementById("pauseExitValue"),
 };
 
 if (elements.appVersionBadge) {
@@ -1541,26 +1538,6 @@ function renderPauseSummary() {
     if (!elements.pauseSummary) return;
     const progress = MODES[state.mode]?.progress(state) || { value: "-" };
     elements.pauseSummary.textContent = pauseSummaryText(progress.value);
-    if (elements.pauseFocusValue) {
-        elements.pauseFocusValue.textContent = joinText([
-            `${TEXT.hud.score} ${state.score}`,
-            `${TEXT.hud.lines} ${state.lines}`,
-            `${TEXT.hud.level} ${state.level}`,
-        ]);
-    }
-    if (elements.pauseInputValue) {
-        elements.pauseInputValue.textContent = joinText([
-            `DAS ${Math.round(state.settings.dasMs)}ms`,
-            `ARR ${Math.round(state.settings.arrMs)}ms`,
-            `Hold ${state.rules.noHold ? "off" : "on"}`,
-        ]);
-    }
-    if (elements.pauseExitValue) {
-        elements.pauseExitValue.textContent = joinText([
-            `${TEXT.result.fields.time} ${formatTime(state.elapsedMs)}`,
-            progress.value,
-        ]);
-    }
 }
 
 function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) {
@@ -1614,9 +1591,13 @@ function feedbackTag(tone) {
 
 function pauseSummaryText(progressValue) {
     if (typeof TEXT.pause.summaryStats === "function") {
-        return TEXT.pause.summaryStats(MODES[state.mode]?.label || "", progressValue);
+        return TEXT.pause.summaryStats({
+            mode: MODES[state.mode]?.label || "",
+            progress: progressValue,
+            score: state.score,
+        });
     }
-    return `${MODES[state.mode]?.label || ""} • ${progressValue}`;
+    return joinText([MODES[state.mode]?.label || "", progressValue, `${TEXT.hud.score} ${state.score}`]);
 }
 
 function mysteryWarningTitle() {

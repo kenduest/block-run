@@ -173,16 +173,8 @@ const zhHant = {
     },
     pause: {
         title: "暫停",
-        summary: "調整設定或回到遊戲。",
-        summaryStats: (mode, progress) => `${mode} • 目前進度 ${progress}`,
-        cards: {
-            focusLabel: "目前焦點",
-            focusValue: "回到場上前，先看目標與節奏。",
-            inputLabel: "操作提示",
-            inputValue: "確認 DAS、ARR、保留與旋轉手感。",
-            exitLabel: "離場提醒",
-            exitValue: "返回模式不會清設定，但會放棄這局進度。",
-        },
+        summary: "先停一下，再決定下一步。",
+        summaryStats: ({ mode, progress, score }) => `${mode} ・ ${progress} ・ 分數 ${score}`,
     },
     result: {
         labelGameOver: "挑戰警示",
@@ -557,16 +549,8 @@ const en = {
     },
     pause: {
         title: "Paused",
-        summary: "Adjust settings or return to the game.",
-        summaryStats: (mode, progress) => `${mode} • Progress ${progress}`,
-        cards: {
-            focusLabel: "Focus",
-            focusValue: "Check the goal and pace before heading back in.",
-            inputLabel: "Handling",
-            inputValue: "Review DAS, ARR, Hold, and rotation timing.",
-            exitLabel: "Exit Note",
-            exitValue: "Back to Modes keeps settings, but abandons this run.",
-        },
+        summary: "Take a moment, then choose your next move.",
+        summaryStats: ({ mode, progress, score }) => `${mode} • ${progress} • Score ${score}`,
     },
     result: {
         labelGameOver: "ARCADE ALERT",
@@ -941,16 +925,8 @@ const ja = {
     },
     pause: {
         title: "一時停止",
-        summary: "設定を変えるか、ゲームに戻ります。",
-        summaryStats: (mode, progress) => `${mode} • 進行状況 ${progress}`,
-        cards: {
-            focusLabel: "現在の焦点",
-            focusValue: "戻る前に、目標とテンポを確認します。",
-            inputLabel: "操作確認",
-            inputValue: "DAS、ARR、Hold、回転感覚を見直します。",
-            exitLabel: "離脱メモ",
-            exitValue: "モードに戻ると設定は残りますが、このプレイは終了します。",
-        },
+        summary: "少し止めて、次の操作を選びます。",
+        summaryStats: ({ mode, progress, score }) => `${mode} ・ ${progress} ・ スコア ${score}`,
     },
     result: {
         labelGameOver: "ARCADE ALERT",
