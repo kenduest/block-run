@@ -22,6 +22,7 @@ There is no backend, no account system, and no framework build pipeline. The foc
 - Multiple modes: `Marathon`, `Sprint`, `Ultra`, `Dig`, `Mystery`, `Zen`, `Daily`, `Stage`, `Training`
 - Local records: best scores, achievements, stage progress, daily runs, replay summaries
 - AI support: `AI Demo / AI Assist`
+- First-run help, shortcut summaries, touch guidance, and result comparison summaries
 
 ## How to run
 
@@ -77,12 +78,26 @@ That file can be opened directly in a browser.
 | `Z` | Rotate counterclockwise |
 | `↓` | Soft drop |
 | `Space` | Hard drop |
+| `Enter` | Start a game or play again from the result screen |
 | `C` | Hold |
 | `A` | Toggle AI Assist |
 | `P` / `Esc` | Pause |
 | `G` | Toggle ghost piece |
+| `Shift` + `?` | Show or hide the first-run controls help |
 | `R` | Zen undo |
 | `V` | Zen clear board |
+
+## Touch controls
+
+Phones and tablets show a touch control bar and also support gestures:
+
+| Gesture | Action |
+| --- | --- |
+| Swipe left or right | Move |
+| Swipe up | Hard drop |
+| Swipe down | Fast drop |
+| Double tap board | Rotate |
+| Long press down | Continuous drop |
 
 ## Developer commands
 
@@ -100,6 +115,11 @@ make package
 - `make test`: run tests
 - `make verify`: run the full verification flow
 - `make package`: build the standalone offline file
+
+## Cache and versioning
+
+Local development and GitHub Pages output add version query strings to browser-loaded JS/CSS so the menu and modules do not get stuck on stale cache.  
+`make serve` uses a startup timestamp as the development version; release output replaces it with the app version.
 
 ## Project structure
 

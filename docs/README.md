@@ -7,4 +7,5 @@ Suggested uses:
 - release notes
 - gameplay rule notes
 - UI redesign notes
+- cache/versioning notes for browser-loaded assets
 - screenshots or publishing notes for GitHub releases

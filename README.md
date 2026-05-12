@@ -22,6 +22,7 @@
 - 多種模式：`Marathon`、`Sprint`、`Ultra`、`Dig`、`Mystery`、`Zen`、`Daily`、`Stage`、`Training`
 - 本機紀錄：最佳分數、成就、關卡進度、每日成績、replay 摘要
 - AI 輔助：支援 `AI Demo / AI Assist`
+- 新手提示、快捷鍵摘要、觸控操作提示與結果差值摘要
 
 ## 如何執行
 
@@ -77,12 +78,26 @@ dist/block-run-standalone.html
 | `Z` | 逆時針旋轉 |
 | `↓` | 軟降 |
 | `Space` | 硬降 |
+| `Enter` | 開始遊戲、結算後再玩一次 |
 | `C` | 保留方塊 |
 | `A` | 切換 AI Assist |
 | `P` / `Esc` | 暫停 |
 | `G` | 切換落點預覽 |
+| `Shift` + `?` | 顯示或隱藏新手操作提示 |
 | `R` | Zen 模式復原 |
 | `V` | Zen 模式清版 |
+
+## 觸控操作
+
+手機或平板會顯示觸控控制列，也支援手勢操作：
+
+| 手勢 | 功能 |
+| --- | --- |
+| 左右滑 | 左右移動 |
+| 上滑 | 硬降 |
+| 下滑 | 快速下落 |
+| 雙擊棋盤 | 旋轉 |
+| 長按下鍵 | 持續下落 |
 
 ## 開發指令
 
@@ -100,6 +115,11 @@ make package
 - `make test`：執行測試
 - `make verify`：執行完整驗證
 - `make package`：產生單檔離線版
+
+## 快取與版本
+
+本機開發與 GitHub Pages 發佈都會替瀏覽器載入的 JS/CSS 加上版本查詢字串，避免首頁或模組被舊快取卡住。  
+`make serve` 會使用啟動時的 timestamp 當開發版本；發佈用輸出會改用對應的 app version。
 
 ## 專案結構
 
