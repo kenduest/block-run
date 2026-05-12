@@ -1,4 +1,4 @@
-import { TEXT } from "../i18n.js?v=__APP_VERSION__";
+import { TEXT } from "../../i18n.js?v=__APP_VERSION__";
 
 export function renderResultScreen(state, viewModel, elements) {
     const stats = viewModel.isGameOver

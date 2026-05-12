@@ -1,6 +1,6 @@
-import { TEXT } from "../i18n.js?v=__APP_VERSION__";
-import { STAGES, MODES, formatPreciseTime, formatTime } from "../modes.js?v=__APP_VERSION__";
-import { ACHIEVEMENT_IDS, achievementLabel, describeAchievementProgress } from "../progression.js?v=__APP_VERSION__";
+import { TEXT } from "../../i18n.js?v=__APP_VERSION__";
+import { STAGES, MODES, formatPreciseTime, formatTime } from "../../modes.js?v=__APP_VERSION__";
+import { ACHIEVEMENT_IDS, achievementLabel, describeAchievementProgress } from "../../progression.js?v=__APP_VERSION__";
 
 export function renderProfileScreen(data, elements) {
     const totals = data.totals;

@@ -1,4 +1,4 @@
-import { TEXT, joinText } from "../i18n.js?v=__APP_VERSION__";
+import { TEXT, joinText } from "../../i18n.js?v=__APP_VERSION__";
 
 export function renderPauseSummary(state, elements, deps = {}) {
     if (!elements.pauseSummary) return;
