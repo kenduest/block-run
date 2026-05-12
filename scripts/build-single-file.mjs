@@ -31,7 +31,10 @@ function visitModule(file) {
     seen.add(resolved);
 
     const source = readFile(resolved);
-    const importMatches = [...source.matchAll(/^\s*import\s+[\s\S]*?from\s+["'](.+?)["'];?\s*$/gm)];
+    const importMatches = [
+        ...source.matchAll(/^\s*import\s+[\s\S]*?from\s+["'](.+?)["'];?\s*$/gm),
+        ...source.matchAll(/^\s*export\s+\{[\s\S]*?\}\s+from\s+["'](.+?)["'];?\s*$/gm),
+    ];
     for (const match of importMatches) {
         visitModule(resolveImport(resolved, match[1]));
     }
@@ -41,6 +44,7 @@ function visitModule(file) {
 function stripModuleSyntax(source) {
     return source
         .replace(/^\s*import\s+[\s\S]*?from\s+["'](.+?)["'];?\s*$/gm, "")
+        .replace(/^\s*export\s+\{[\s\S]*?\}\s+from\s+["'](.+?)["'];?\s*$/gm, "")
         .replace(/^export\s+(const|function|class)\s+/gm, "$1 ")
         .replace(/^export\s+\{[\s\S]*?\};?\s*$/gm, "");
 }
@@ -62,8 +66,9 @@ function buildHtml() {
     const js = buildBundle().trim();
 
     return html
-        .replace(/<link rel="stylesheet" href="\.\/styles\.css[^"]*">\s*/u, `<style>\n${css}\n</style>\n`)
-        .replace(/<script type="module" src="\.\/src\/game\.js[^"]*"><\/script>\s*/u, `<script>\n${js}\n</script>\n`);
+        .replace(/<script>\s*window\.__BLOCK_RUN_ASSET_VERSION__[\s\S]*?<\/script>\s*/u, "")
+        .replace(/<script>\s*document\.write\(`<link rel="stylesheet"[\s\S]*?<\/script>\s*/u, `<style>\n${css}\n</style>\n`)
+        .replace(/<script>\s*const script = document\.createElement\("script"\);[\s\S]*?document\.body\.append\(script\);\s*<\/script>\s*/u, `<script>\n${js}\n</script>\n`);
 }
 
 ensureDir(DIST_DIR);

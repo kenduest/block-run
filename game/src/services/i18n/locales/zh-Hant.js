@@ -369,6 +369,7 @@ export const messages = {
         noRecord: "尚無紀錄",
         todayPrefix: "今日",
         todayIncomplete: "今日未完成",
+        incompleteShort: "未完成",
     },
     game: {
         aiDemo: "AI 展示中",

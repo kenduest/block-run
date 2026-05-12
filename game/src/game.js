@@ -1089,7 +1089,7 @@ function applyUiState() {
     elements.progressLabel.textContent = progress.label;
     elements.progressValue.textContent = progress.value;
     elements.progressBar.style.width = `${Math.max(0, Math.min(1, progress.ratio)) * 100}%`;
-    elements.best.textContent = bestLabel(state.mode).replace(new RegExp(`^${TEXT.best.prefix}\\s*`), "");
+    elements.best.textContent = hudBestValue(state.mode);
     refreshAiAssistButton();
     elements.quickSoundToggle.textContent = state.settings.soundEnabled ? "🔊" : "🔇";
     elements.quickSoundToggle.classList.toggle("muted", !state.settings.soundEnabled);
@@ -1335,6 +1335,16 @@ function bestLabel(modeId) {
         return record ? `${TEXT.best.todayPrefix} ${record.score}` : TEXT.best.todayIncomplete;
     }
     return `${TEXT.best.prefix} ${Number(best) || 0}`;
+}
+
+function hudBestValue(modeId) {
+    const best = data.bestScores[modeId];
+    if (modeId === "sprint" || modeId === "dig") return best?.elapsedMs ? formatPreciseTime(best.elapsedMs) : "-";
+    if (modeId === "daily") {
+        const record = data.daily?.[todayKey()];
+        return record ? String(record.score) : TEXT.best.incompleteShort || "-";
+    }
+    return String(Number(best) || 0);
 }
 
 function totalStars() {
