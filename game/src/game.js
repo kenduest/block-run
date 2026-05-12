@@ -357,6 +357,7 @@ function bindEvents() {
 
     document.addEventListener("keydown", event => {
         const key = event.key.toLowerCase();
+        const screenAtKeydown = state.screen;
         if (key === "escape") {
             event.preventDefault();
             if (state.screen === "playing") { pauseGame(); return; }
@@ -380,7 +381,7 @@ function bindEvents() {
         if (key === "g") toggleGhost();
         if (key === "r") action("zen-undo");
         if (key === "v") action("zen-clear");
-        if (state.screen === "result" && (key === "enter" || key === " ")) {
+        if (screenAtKeydown === "result" && !event.repeat && (key === "enter" || key === " ")) {
             event.preventDefault();
             startMode(state.mode);
         }
