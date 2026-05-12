@@ -25,12 +25,13 @@ function fillQueue(state, deps) {
 export function spawnNextPiece(state, deps = {}) {
     ensureState(state);
     fillQueue(state, deps);
+    const spawnY = Number.isFinite(deps.spawnY) ? deps.spawnY : 0;
 
     const type = state.nextQueue.shift();
     state.player.type = type;
     state.player.matrix = deps.createPiece(type);
     state.player.rotation = 0;
-    state.player.pos.y = 0;
+    state.player.pos.y = spawnY;
     state.player.pos.x = Math.floor(deps.COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
     state.canHold = true;
 
@@ -232,7 +233,7 @@ function holdPiece(state, deps) {
         state.player.matrix = deps.createPiece(state.player.type);
         state.player.rotation = 0;
         state.holdPiece = currentType;
-        state.player.pos.y = 0;
+        state.player.pos.y = Number.isFinite(deps.spawnY) ? deps.spawnY : 0;
         state.player.pos.x = Math.floor(deps.COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
 
         if (deps.collide(state.arena, state.player)) {

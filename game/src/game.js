@@ -28,6 +28,7 @@ import { loadData, markStageComplete, recordGame, resetRecords, saveData, update
 import {
     COLS,
     ARENA_ROWS,
+    HIDDEN_ROWS,
     collide,
     countGarbageCells,
     createMatrix,
@@ -746,6 +747,7 @@ function handleLockVisuals(lockResult) {
 function gameplayActionDeps() {
     return {
         COLS,
+        spawnY: HIDDEN_ROWS,
         createPiece,
         pullFromBag,
         collide,
@@ -1127,6 +1129,7 @@ function update(time = 0) {
             }),
             updateModeEvents: (state, deltaMs) => updateModeEvents(deltaMs),
             getFallSpeed: currentState => MODES[currentState.mode].speedCurve(currentState.level, currentState),
+            collide,
             isSoftDropActive: () => keyState.down,
             onLock: () => executeLockAndSpawn(),
             evaluateResult: () => evaluateResultCore(state, { MODES }),
