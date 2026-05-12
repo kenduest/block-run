@@ -2613,6 +2613,7 @@ body.screen-menu .mode-card-footer b {
     body.screen-stageSelect .board-frame,
     body.screen-settings .board-frame,
     body.screen-profile .board-frame {
+        width: 100%;
         aspect-ratio: auto;
         max-height: none;
         height: auto;
@@ -2646,6 +2647,80 @@ body.screen-menu .mode-card-footer b {
     body.screen-profile #profileScreen {
         position: relative;
         inset: auto;
+    }
+
+    body.screen-profile #profileScreen {
+        height: auto;
+        overflow: visible;
+    }
+
+    .profile-header {
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .profile-header h2 {
+        font-size: clamp(28px, 9vw, 40px);
+        line-height: 1.02;
+    }
+
+    .profile-actions {
+        flex-wrap: wrap;
+        justify-content: end;
+    }
+
+    .profile-header button {
+        min-width: 86px;
+        min-height: 42px;
+        padding-inline: 12px;
+    }
+
+    .profile-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: none;
+        height: auto;
+        overflow: visible;
+    }
+
+    .profile-summary-grid {
+        grid-row: auto;
+    }
+
+    .profile-summary-grid,
+    .profile-section,
+    .profile-list {
+        overflow: visible;
+    }
+
+    .profile-table {
+        table-layout: fixed;
+    }
+
+    .profile-table th,
+    .profile-table td {
+        white-space: normal;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+    }
+
+    #achievementList {
+        grid-template-columns: repeat(2, minmax(112px, 1fr));
+    }
+
+    #achievementList li span {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        line-height: 1.25;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+    }
+
+    .replay-row {
+        grid-template-columns: minmax(70px, 1fr) minmax(56px, 0.8fr) minmax(58px, 0.8fr) minmax(74px, 1fr);
+        gap: 6px;
+        padding: 9px 10px;
+        font-size: 14px;
     }
 
     .hud {
@@ -2897,6 +2972,68 @@ body.screen-menu .mode-card-footer b {
 }
 
 @media (max-width: 680px) {
+    body.screen-profile .app-shell,
+    body.screen-settings .app-shell,
+    body.screen-stageSelect .app-shell {
+        width: min(100vw - 8px, 520px);
+    }
+
+    body.screen-profile .playfield-panel,
+    body.screen-settings .playfield-panel,
+    body.screen-stageSelect .playfield-panel {
+        padding: 6px;
+    }
+
+    body.screen-profile .board-frame,
+    body.screen-settings .board-frame,
+    body.screen-stageSelect .board-frame {
+        width: 100%;
+        max-width: none;
+    }
+
+    body.screen-profile #profileScreen {
+        gap: 10px;
+        padding: 12px 10px 10px;
+    }
+
+    .profile-header {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .profile-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .profile-header button {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .profile-content {
+        gap: 10px;
+    }
+
+    .profile-summary-grid,
+    .profile-section {
+        padding: 12px;
+    }
+
+    .profile-table {
+        font-size: 14px;
+    }
+
+    .profile-table th,
+    .profile-table td {
+        padding: 9px 8px;
+    }
+
+    #achievementList {
+        grid-template-columns: 1fr;
+    }
+
     body.screen-menu .app-shell {
         width: min(100vw - 8px, 520px);
     }
