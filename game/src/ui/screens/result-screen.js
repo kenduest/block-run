@@ -29,7 +29,10 @@ export function renderResultScreen(state, viewModel, elements) {
         : viewModel.isGameOver
             ? TEXT.result.gameOver
             : TEXT.result.done;
-    elements.resultStats.innerHTML = stats.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+    elements.resultStats.innerHTML = stats.map(([label, value], index) => {
+        const priorityClass = index < 2 ? " result-stat-primary" : "";
+        return `<div class="result-stat${priorityClass}"><span>${label}</span><strong>${value}</strong></div>`;
+    }).join("");
     if (elements.resultComparison) {
         if (viewModel.comparison && viewModel.comparison.rows.length) {
             elements.resultComparison.hidden = false;
