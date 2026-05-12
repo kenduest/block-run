@@ -1531,13 +1531,23 @@ body.screen-result.game-over #resultScreen > * {
     z-index: 1;
 }
 
+body.screen-result.game-over #resultScreen .overline,
+body.screen-result.game-over #resultScreen h2,
+body.screen-result.game-over #resultScreen .result-meta,
+body.screen-result.game-over #resultScreen #resultStats,
+body.screen-result.game-over #resultScreen #achievementNotice {
+    width: min(100%, 620px);
+    max-width: 620px;
+    justify-self: center;
+}
+
 body.screen-result.game-over #resultScreen .overline {
     color: var(--danger);
 }
 
 body.screen-result.game-over #resultScreen h2 {
     color: #fff7f8;
-    font-size: clamp(40px, 6.4vw, 72px);
+    font-size: clamp(40px, 5.8vw, 68px);
     letter-spacing: 0;
     text-shadow:
         0 0 18px rgba(251, 113, 133, 0.48),
@@ -1556,7 +1566,6 @@ body.screen-result.game-over #resultScreen h2 {
 }
 
 body.screen-result.game-over #resultStats {
-    width: min(100%, 560px);
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
