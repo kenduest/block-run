@@ -25,7 +25,7 @@ help:
 
 serve:
 	@printf 'Serving Block Run from %s at http://%s:%s/\n' '$(GAME_DIR)' '$(HOST)' '$(PORT)'
-	cd $(GAME_DIR) && $(PYTHON) -m http.server $(PORT) --bind $(HOST)
+	HOST="$(HOST)" PORT="$(PORT)" $(NODE) scripts/dev-server.mjs
 
 dev: serve
 

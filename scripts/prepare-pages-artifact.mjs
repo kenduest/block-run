@@ -5,7 +5,7 @@ const ROOT = process.cwd();
 const SOURCE_DIR = path.join(ROOT, "game");
 const OUTPUT_DIR = path.join(ROOT, "dist", "pages");
 const PLACEHOLDER = "__APP_VERSION__";
-const VERSION = process.env.APP_VERSION || "dev";
+const VERSION = process.env.APP_VERSION || `dev-${Date.now()}`;
 const TEXT_FILE_RE = /\.(html|css|js)$/u;
 
 function ensureCleanDir(dir) {

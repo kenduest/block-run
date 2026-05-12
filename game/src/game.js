@@ -51,7 +51,8 @@ import {
 } from "./touch.js?v=__APP_VERSION__";
 
 const APP_VERSION = "__APP_VERSION__";
-const DISPLAY_VERSION = APP_VERSION.includes("__APP_VERSION__") ? "dev" : APP_VERSION;
+const APP_VERSION_PLACEHOLDER = "__APP" + "_VERSION__";
+const DISPLAY_VERSION = APP_VERSION === APP_VERSION_PLACEHOLDER ? "dev" : APP_VERSION;
 const SHORT_DISPLAY_VERSION = DISPLAY_VERSION === "dev" ? "dev" : DISPLAY_VERSION.slice(0, 7);
 const HELP_OVERLAY_STORAGE_KEY = "block-run-help-overlay-seen-v1";
 const ADVANCED_STATS_STORAGE_KEY = "block-run-hud-advanced-stats-v1";
@@ -204,6 +205,10 @@ function buildModeMenu() {
         tab.className = group.id === selectedGroup.id ? "active" : "";
         tab.textContent = group.label;
         tab.addEventListener("click", () => {
+            if (group.extras?.includes("profile") && group.modes.length === 0) {
+                showProfile();
+                return;
+            }
             uiState.activeMenuGroup = group.id;
             buildModeMenu();
         });
