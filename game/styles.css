@@ -1777,7 +1777,7 @@ body.screen-settings #settingsScreen .screen-actions {
 }
 
 body.screen-result.game-over #resultScreen {
-    gap: 14px;
+    gap: clamp(6px, 1vh, 10px);
     background:
         radial-gradient(circle at center, rgba(251, 113, 133, 0.1), transparent 24rem),
         rgba(2, 6, 15, 0.92);
@@ -1822,8 +1822,8 @@ body.screen-result.game-over #resultScreen h2,
 body.screen-result.game-over #resultScreen .result-meta,
 body.screen-result.game-over #resultScreen #resultStats,
 body.screen-result.game-over #resultScreen #achievementNotice {
-    width: min(100%, 860px);
-    max-width: 860px;
+    width: min(100%, 680px);
+    max-width: 680px;
     justify-self: center;
 }
 
@@ -1833,7 +1833,7 @@ body.screen-result.game-over #resultScreen .overline {
 
 body.screen-result.game-over #resultScreen h2 {
     color: #fff7f8;
-    font-size: clamp(40px, 5.8vw, 68px);
+    font-size: clamp(34px, 4.6vw, 56px);
     letter-spacing: 0;
     text-shadow:
         0 0 18px rgba(251, 113, 133, 0.48),
@@ -1856,9 +1856,36 @@ body.screen-result.game-over #resultStats {
 }
 
 body.screen-result.game-over .result-grid div {
-    min-height: 72px;
+    min-height: 58px;
+    padding: 7px 10px;
     background: rgba(24, 16, 26, 0.86);
     border-color: rgba(251, 113, 133, 0.26);
+}
+
+body.screen-result.game-over .result-meta {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
+}
+
+body.screen-result.game-over .result-grade-card,
+body.screen-result.game-over .result-badge-card {
+    min-height: 68px;
+    padding: 9px 12px;
+}
+
+body.screen-result.game-over .result-grade-value {
+    font-size: clamp(28px, 3.4vw, 42px);
+}
+
+body.screen-result.game-over .result-grid strong {
+    font-size: clamp(22px, 2.5vw, 32px);
+}
+
+body.screen-result.game-over .result-grid .result-stat-primary strong {
+    font-size: clamp(24px, 2.8vw, 34px);
+}
+
+body.screen-result.game-over .result-comparison {
+    width: min(100%, 360px);
 }
 
 .achievement-notice {
