@@ -818,8 +818,9 @@ body.screen-paused .hud h2 {
 
 body.screen-playing .status-badge,
 body.screen-paused .status-badge {
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 5px 9px;
+    font-size: 13px;
+    line-height: 1;
 }
 
 body.screen-playing .stat-grid,
@@ -1002,12 +1003,15 @@ body.screen-paused .hints {
 
 .hud-header > div:first-child {
     min-width: 0;
+    display: grid;
+    gap: 7px;
+    justify-items: start;
 }
 
 .hud-header-right {
     display: grid;
     grid-template-columns: repeat(3, 34px);
-    align-items: flex-end;
+    align-items: start;
     gap: 6px;
     flex: none;
 }
@@ -1059,10 +1063,9 @@ body:not(.hud-advanced-stats) .advanced-stat {
 }
 
 .status-badge {
-    grid-column: 1 / -1;
-    justify-self: end;
+    justify-self: start;
     flex: none;
-    padding: 7px 10px;
+    padding: 5px 9px;
     border: 1px solid var(--line);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.05);
