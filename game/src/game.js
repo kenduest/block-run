@@ -1543,6 +1543,7 @@ function renderPauseSummary() {
 
 function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) {
     if (!elements.feedbackOverlay || !elements.feedbackTitle || !elements.feedbackDetail) return;
+    const effectiveDuration = feedbackDuration(duration, tone);
     elements.feedbackOverlay.hidden = false;
     elements.feedbackOverlay.setAttribute("aria-hidden", "false");
     elements.feedbackTitle.textContent = title || "";
@@ -1560,8 +1561,15 @@ function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) 
         elements.feedbackDetail.textContent = TEXT.feedback.readySecondary;
         if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
         syncFeedbackOverlayState();
-    }, duration);
+    }, effectiveDuration);
     if (tone === "big") pulseBoardShake();
+}
+
+function feedbackDuration(duration, tone) {
+    if (!state.demo.enabled) return duration;
+    if (tone === "record") return Math.max(900, Math.round(duration * 0.6));
+    if (tone === "warning") return Math.max(650, Math.round(duration * 0.65));
+    return Math.max(420, Math.round(duration * 0.45));
 }
 
 function syncFeedbackOverlayState() {
