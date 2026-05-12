@@ -1,11 +1,21 @@
 import { Renderer } from "./renderer.js?v=__APP_VERSION__";
 import { chooseAutoMove, reachedAutoMove } from "./ai.js?v=__APP_VERSION__";
+import { applyAction as applyCoreAction, isGrounded as isCoreGrounded, lockCurrentPiece, spawnNextPiece as spawnCorePiece } from "./core/gameplay-actions.js?v=__APP_VERSION__";
+import { tick as tickCore } from "./core/game-loop.js?v=__APP_VERSION__";
+import { configureRun as configureRunCore, evaluateResult as evaluateResultCore, updateModeEvents as updateModeEventsCore } from "./core/mode-runtime.js?v=__APP_VERSION__";
+import { finishRun as finishRunCore } from "./core/result-flow.js?v=__APP_VERSION__";
 import { TEXT, applyStaticText, joinText, setLanguage } from "./i18n.js?v=__APP_VERSION__";
-import { ACHIEVEMENT_IDS, achievementLabel, describeAchievementProgress, isNewBest, resultGrade, resultGradeHint, resultGradeText, unlockAchievements } from "./progression.js?v=__APP_VERSION__";
+import { achievementLabel, isNewBest, resultGrade, resultGradeHint, resultGradeText, unlockAchievements } from "./progression.js?v=__APP_VERSION__";
+import { renderPauseSummary } from "./ui/screens/pause-screen.js?v=__APP_VERSION__";
+import { renderProfileScreen } from "./ui/screens/profile-screen.js?v=__APP_VERSION__";
+import { renderResultScreen } from "./ui/screens/result-screen.js?v=__APP_VERSION__";
+import { syncSettingsForm } from "./ui/screens/settings-screen.js?v=__APP_VERSION__";
+import { createInitialGameState, resetDemoState, resetRunState } from "./state/game-state.js?v=__APP_VERSION__";
+import { createInitialUiState, resetUiState } from "./state/ui-state.js?v=__APP_VERSION__";
 import {
     MODES,
-    STAGES,
     buildDailyRules,
+    STAGES,
     calculateStageStars,
     currentStage,
     formatPreciseTime,
@@ -23,9 +33,9 @@ import {
     createMatrix,
     createPiece,
     createRng,
+    hashSeed,
     getGhostPosition,
     hasTopOut,
-    hashSeed,
     makeGarbage,
     merge,
     pullFromBag,
@@ -43,6 +53,9 @@ import {
 const APP_VERSION = "__APP_VERSION__";
 const DISPLAY_VERSION = APP_VERSION.includes("__APP_VERSION__") ? "dev" : APP_VERSION;
 const SHORT_DISPLAY_VERSION = DISPLAY_VERSION === "dev" ? "dev" : DISPLAY_VERSION.slice(0, 7);
+const HELP_OVERLAY_STORAGE_KEY = "block-run-help-overlay-seen-v1";
+const ADVANCED_STATS_STORAGE_KEY = "block-run-hud-advanced-stats-v1";
+const TOUCH_ACTION_COOLDOWN_MS = 120;
 
 const elements = {
     appVersionBadge: document.getElementById("appVersionBadge"),
@@ -53,9 +66,9 @@ const elements = {
         menu: document.getElementById("menuScreen"),
         stageSelect: document.getElementById("stageSelectScreen"),
         paused: document.getElementById("pauseScreen"),
-    result: document.getElementById("resultScreen"),
-    settings: document.getElementById("settingsScreen"),
-    profile: document.getElementById("profileScreen"),
+        result: document.getElementById("resultScreen"),
+        settings: document.getElementById("settingsScreen"),
+        profile: document.getElementById("profileScreen"),
     },
     modeList: document.getElementById("modeList"),
     stageList: document.getElementById("stageList"),
@@ -74,9 +87,11 @@ const elements = {
     combo: document.getElementById("comboText"),
     hints: document.getElementById("hintsPanel"),
     quickSoundToggle: document.getElementById("quickSoundToggle"),
+    pauseSummary: document.getElementById("pauseSummary"),
     resultTitle: document.getElementById("resultTitle"),
     resultLabel: document.getElementById("resultLabel"),
     resultStats: document.getElementById("resultStats"),
+    resultComparison: document.getElementById("resultComparison"),
     resultGrade: document.getElementById("resultGradeValue"),
     resultGradeHint: document.getElementById("resultGradeHint"),
     resultRecordBadge: document.getElementById("resultNewRecordBadge"),
@@ -90,6 +105,8 @@ const elements = {
     feedbackDetail: document.getElementById("feedbackSecondary"),
     feedbackTimer: document.getElementById("feedbackTimer"),
     feedbackTimerValue: document.getElementById("feedbackTimerValue"),
+    statusToast: document.getElementById("statusToast"),
+    statusToastText: document.getElementById("statusToastText"),
     aiAssistButton: document.getElementById("aiAssistButton"),
     touchAiAssistButton: document.getElementById("touchAiAssistButton"),
     marathonEndlessSetting: document.getElementById("marathonEndlessSetting"),
@@ -119,71 +136,14 @@ if (elements.appVersionBadge) {
 
 const renderer = new Renderer(elements.board, elements.next, elements.hold);
 const data = loadData();
-let activeMenuGroup = "featured";
-let pendingRendererLayoutFrame = null;
-
-const state = {
-    screen: "menu",
-    mode: "marathon",
-    stageIndex: 0,
-    score: 0,
-    lines: 0,
-    level: 1,
-    b2bChain: 0,
-    combo: -1,
-    maxCombo: 0,
-    lastClear: 0,
-    tetrisCount: 0,
-    zoneMeter: 0,
-    zoneActiveMs: 0,
-    garbageCells: 0,
-    startingGarbageCells: 0,
-    elapsedMs: 0,
-    startedAt: 0,
-    piecesPlaced: 0,
-    inputs: 0,
-    inputLog: [],
-    lastSnapshot: null,
-    seed: 0,
-    rng: Math.random,
-    rules: {},
-    dailyKey: null,
-    dailyRules: null,
-    mystery: null,
-    hiddenBlocksActive: false,
-    garbageTickMs: 0,
-    result: "playing",
-    gameOver: false,
-    arena: createMatrix(COLS, ARENA_ROWS),
-    player: { pos: { x: 0, y: 0 }, matrix: null, type: null, rotation: 0 },
-    nextQueue: [],
-    holdPiece: null,
-    canHold: true,
-    settings: data.settings,
-    demo: { enabled: false, move: null, stepMs: 0 },
-    latestAchievements: [],
-    lastResultGrade: "C",
-    lastRunNewRecord: false,
-};
-
-let bag = [];
-let dropCounter = 0;
-let lockCounter = 0;
-let moveResetCount = 0;
+const state = createInitialGameState(data);
+const uiState = createInitialUiState();
+resetUiState(uiState);
+uiState.showAdvancedStats = readUiPreference(ADVANCED_STATS_STORAGE_KEY, uiState.showAdvancedStats);
+uiState.helpOverlaySeen = readUiPreference(HELP_OVERLAY_STORAGE_KEY, uiState.helpOverlaySeen);
 let lastTime = 0;
-let lastDisplayedScore = 0;
 let audioContext = null;
-let previousLevel = 1;
-let settingsReturnScreen = "menu";
-let pendingBoardTap = null;
-let previousBoardTap = null;
-let boardPointerDown = null;
-let boardFeedbackTimer = null;
-const keyState = {
-    left: { down: false, das: 0, arr: 0 },
-    right: { down: false, das: 0, arr: 0 },
-    down: false,
-};
+const keyState = uiState.keyState;
 
 init();
 
@@ -192,9 +152,11 @@ function init() {
     renderer.resize();
     buildModeMenu();
     buildStageMenu();
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
     bindEvents();
+    syncTouchLayout();
     applyUiState();
+    if (!uiState.helpOverlaySeen) openHelpOverlay();
     renderer.renderPreviews(null, null);
     requestAnimationFrame(update);
 }
@@ -216,21 +178,24 @@ function refreshLanguageResources(setting) {
 function refreshLanguageDependentViews() {
     buildModeMenu();
     buildStageMenu();
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
 }
 
 function refreshCurrentScreenContent() {
     refreshComboBanner();
     syncFeedbackOverlayState();
-    if (state.screen === "paused") renderPauseSummary();
-    if (state.screen === "profile") renderProfile();
-    if (state.screen === "result") renderResult(state.latestAchievements);
+    if (state.screen === "paused") renderPauseSummary(state, elements, { MODES, TEXT, joinText });
+    if (state.screen === "profile") renderProfileScreen(data, elements);
+    if (state.screen === "result") {
+        const resultViewModel = buildResultViewModel(null, state.latestAchievements);
+        renderResultScreen(state, resultViewModel, elements);
+    }
 }
 
 function buildModeMenu() {
     elements.modeList.innerHTML = "";
     const menuGroups = TEXT.menu.groups;
-    const selectedGroup = menuGroups.find(group => group.id === activeMenuGroup) || menuGroups[0];
+    const selectedGroup = menuGroups.find(group => group.id === uiState.activeMenuGroup) || menuGroups[0];
     const tabs = document.createElement("div");
     tabs.className = "mode-tabs";
     for (const group of menuGroups) {
@@ -239,7 +204,7 @@ function buildModeMenu() {
         tab.className = group.id === selectedGroup.id ? "active" : "";
         tab.textContent = group.label;
         tab.addEventListener("click", () => {
-            activeMenuGroup = group.id;
+            uiState.activeMenuGroup = group.id;
             buildModeMenu();
         });
         tabs.append(tab);
@@ -353,6 +318,7 @@ function bindEvents() {
     window.addEventListener("resize", () => {
         renderer.resize();
         renderer.renderPreviews(state.nextQueue[0], state.holdPiece);
+        syncTouchLayout();
     });
 
     document.addEventListener("keydown", event => {
@@ -364,6 +330,11 @@ function bindEvents() {
             if (state.screen === "paused") { resumeGame(); return; }
             if (state.screen === "settings") { closeSettings(); return; }
             if (state.screen === "profile" || state.screen === "stageSelect" || state.screen === "result") { showMenu(); return; }
+            return;
+        }
+        if (key === "?" && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            command("toggle-help");
             return;
         }
         if (["arrowleft", "arrowright", "arrowdown", "arrowup", " ", "a", "c", "p", "z", "x", "g", "r", "v"].includes(key)) {
@@ -381,6 +352,10 @@ function bindEvents() {
         if (key === "g") toggleGhost();
         if (key === "r") action("zen-undo");
         if (key === "v") action("zen-clear");
+        if (screenAtKeydown === "menu" && !event.repeat && (key === "enter" || key === " ")) {
+            event.preventDefault();
+            startMode(state.mode);
+        }
         if (screenAtKeydown === "result" && !event.repeat && (key === "enter" || key === " ")) {
             event.preventDefault();
             startMode(state.mode);
@@ -409,7 +384,7 @@ function bindEvents() {
     bindSettingControls();
     elements.quickSoundToggle.addEventListener("click", () => {
         updateSetting("soundEnabled", !state.settings.soundEnabled);
-        syncSettingsForm();
+        syncSettingsForm(state, data, elements);
     });
 
     // Button ripple effect: track click position
@@ -429,13 +404,14 @@ function bindTouchPadControls() {
         const actionName = button.dataset.action;
         if (["left", "right", "down"].includes(actionName)) {
             const release = () => stopTouchAction(actionName, button);
-            button.addEventListener("pointerdown", event => {
-                if (event.pointerType === "mouse" && event.button !== 0) return;
-                event.preventDefault();
-                startTouchAction(actionName, button);
-                button.dataset.skipClick = "1";
-                if (button.setPointerCapture) {
-                    try { button.setPointerCapture(event.pointerId); } catch {}
+        button.addEventListener("pointerdown", event => {
+            if (event.pointerType === "mouse" && event.button !== 0) return;
+            if (isActionDebounced(actionName)) return;
+            event.preventDefault();
+            startTouchAction(actionName, button);
+            button.dataset.skipClick = "1";
+            if (button.setPointerCapture) {
+                try { button.setPointerCapture(event.pointerId); } catch {}
                 }
             });
             button.addEventListener("pointerup", release);
@@ -449,14 +425,17 @@ function bindTouchPadControls() {
             });
             return;
         }
-        button.addEventListener("click", () => action(actionName));
+        button.addEventListener("click", () => {
+            if (isActionDebounced(actionName)) return;
+            action(actionName);
+        });
     });
 }
 
 function bindBoardTouchControls() {
     elements.board.addEventListener("pointerdown", event => {
         if (!isBoardTouchPointer(event)) return;
-        boardPointerDown = { x: event.clientX, y: event.clientY, time: Date.now() };
+        uiState.boardPointerDown = { x: event.clientX, y: event.clientY, time: Date.now() };
     });
     elements.board.addEventListener("pointerup", event => {
         if (!isBoardTouchPointer(event)) return;
@@ -464,31 +443,31 @@ function bindBoardTouchControls() {
         event.preventDefault();
 
         const pointerUp = { x: event.clientX, y: event.clientY, time: Date.now() };
-        const swipeAction = resolveBoardSwipeAction(boardPointerDown, pointerUp);
-        boardPointerDown = null;
+        const swipeAction = resolveBoardSwipeAction(uiState.boardPointerDown, pointerUp);
+        uiState.boardPointerDown = null;
         if (swipeAction) {
             clearPendingBoardTap();
-            previousBoardTap = null;
+            uiState.previousBoardTap = null;
             action(swipeAction);
             return;
         }
 
         const rect = elements.board.getBoundingClientRect();
         const tap = pointerUp;
-        if (isBoardDoubleTap(previousBoardTap, tap)) {
+        if (isBoardDoubleTap(uiState.previousBoardTap, tap)) {
             clearPendingBoardTap();
-            previousBoardTap = null;
+            uiState.previousBoardTap = null;
             action("rotate");
             return;
         }
 
-        previousBoardTap = tap;
+        uiState.previousBoardTap = tap;
         clearPendingBoardTap();
-        pendingBoardTap = window.setTimeout(() => {
+        uiState.pendingBoardTap = window.setTimeout(() => {
             const boardAction = resolveBoardTapAction(event.clientX, rect.left, rect.width);
             action(boardAction);
-            previousBoardTap = null;
-            pendingBoardTap = null;
+            uiState.previousBoardTap = null;
+            uiState.pendingBoardTap = null;
         }, BOARD_DOUBLE_TAP_MS);
     });
 }
@@ -498,9 +477,9 @@ function isBoardTouchPointer(event) {
 }
 
 function clearPendingBoardTap() {
-    if (pendingBoardTap !== null) {
-        clearTimeout(pendingBoardTap);
-        pendingBoardTap = null;
+    if (uiState.pendingBoardTap !== null) {
+        clearTimeout(uiState.pendingBoardTap);
+        uiState.pendingBoardTap = null;
     }
 }
 
@@ -529,7 +508,9 @@ function stopTouchAction(actionName, button) {
 function command(commandName) {
     if (commandName === "pause") pauseGame();
     if (commandName === "resume") resumeGame();
-    if (commandName === "restart") startMode(state.mode);
+    if (commandName === "restart") startMode(state.mode, { restart: true });
+    if (commandName === "toggle-help") toggleHelpOverlay();
+    if (commandName === "toggle-advanced-stats") toggleAdvancedStats();
     if (commandName === "menu") showMenu();
     if (commandName === "hold") action("hold");
     if (commandName === "open-settings") openSettings();
@@ -542,16 +523,37 @@ function command(commandName) {
     if (commandName === "zen-undo") action("zen-undo");
 }
 
-function startMode(modeId) {
+function startMode(modeId, options = {}) {
     state.mode = modeId;
-    state.demo = { enabled: false, move: null, stepMs: 0 };
     if (modeId !== "stages") state.stageIndex = 0;
-    resetState();
-    configureRun(modeId);
+    resetRunState(state, {
+        id: modeId,
+        mode: modeId,
+        stages: STAGES,
+        stageIndex: state.stageIndex,
+    });
+    configureRunCore(state, modeId, {
+        now: () => performance.now(),
+        todayKey,
+        buildDailyRules,
+        currentStage: () => currentStage(state),
+        hashSeed,
+        createRng,
+        TEXT,
+    });
+    state.previousLevel = state.level;
+    lastTime = 0;
     state.screen = "playing";
+    closeHelpOverlay();
     applyUiState();
+    showStatusToast(
+        options.restart
+            ? TEXT.toast.modeRestarted(MODES[modeId]?.label || modeId)
+            : TEXT.toast.modeStarted(MODES[modeId]?.label || modeId),
+        "success",
+        1400,
+    );
     state.startedAt = performance.now();
-    previousLevel = state.level;
     spawnPiece();
     applyStartingGarbage();
     refreshAiAssistButton();
@@ -565,8 +567,10 @@ function startStage(index) {
 
 function startDemo() {
     startMode(["sprint", "dig"].includes(state.mode) ? state.mode : "marathon");
-    state.demo.enabled = true;
-    state.demo.move = chooseAutoMove(state.arena, state.player);
+    resetDemoState(state, {
+        enabled: true,
+        move: chooseAutoMove(state.arena, state.player),
+    });
     refreshComboBanner();
     applyUiState();
 }
@@ -577,106 +581,21 @@ function toggleAiAssist() {
     state.demo.move = state.demo.enabled ? chooseAutoMove(state.arena, state.player) : null;
     state.demo.stepMs = 0;
     refreshComboBanner();
+    showStatusToast(
+        state.demo.enabled ? TEXT.toast.aiAssistEnabled : TEXT.toast.aiAssistDisabled,
+        "info",
+        1300,
+    );
     if (state.screen === "paused" && state.demo.enabled) resumeGame();
     applyUiState();
 }
 
-function resetState() {
-    state.score = 0;
-    state.lines = 0;
-    state.level = 1;
-    state.b2bChain = 0;
-    state.combo = -1;
-    state.maxCombo = 0;
-    state.lastClear = 0;
-    state.tetrisCount = 0;
-    state.zoneMeter = 0;
-    state.zoneActiveMs = 0;
-    state.garbageCells = 0;
-    state.startingGarbageCells = 0;
-    state.elapsedMs = 0;
-    state.piecesPlaced = 0;
-    state.inputs = 0;
-    state.inputLog = [];
-    state.lastSnapshot = null;
-    state.seed = 0;
-    state.rng = Math.random;
-    state.rules = {};
-    state.dailyKey = null;
-    state.dailyRules = null;
-    state.mystery = null;
-    state.hiddenBlocksActive = false;
-    state.garbageTickMs = 0;
-    state.result = "playing";
-    state.gameOver = false;
-    state.lastResultGrade = "C";
-    state.lastRunNewRecord = false;
-    state.arena = createMatrix(COLS, ARENA_ROWS);
-    state.player = { pos: { x: 0, y: 0 }, matrix: null, type: null, rotation: 0 };
-    state.nextQueue = [];
-    state.holdPiece = null;
-    state.canHold = true;
-    bag = [];
-    dropCounter = 0;
-    lockCounter = 0;
-    moveResetCount = 0;
-    lastTime = 0;
-    fillQueue();
-}
-
-function configureRun(modeId) {
-    const dateKey = todayKey();
-    const stage = modeId === "stages" ? currentStage(state) : null;
-    state.seed = modeId === "daily"
-        ? MODES.daily.buildSeed(dateKey)
-        : hashSeed(`${modeId}-${stage?.id || "free"}-${Date.now()}`);
-    state.rng = createRng(state.seed);
-    state.rules = {
-        endless: modeId === "marathon" && state.settings.marathonEndless,
-        noHold: stage?.modifiers?.noHold || false,
-        limitedPreview: stage?.modifiers?.limitedPreview || null,
-        periodicGarbageMs: stage?.modifiers?.periodicGarbageMs || null,
-        zoneMeter: stage?.modifiers?.zoneMeter || modeId === "zen",
-    };
-    if (modeId === "daily") {
-        state.dailyKey = dateKey;
-        state.dailyRules = buildDailyRules(dateKey);
-        state.seed = state.dailyRules.seed;
-        state.rng = createRng(state.seed);
-    }
-    if (modeId === "mystery" || stage?.modifiers?.mystery) {
-        state.mystery = { nextInMs: 30000, activeLabel: TEXT.game.activeLabel, speedMultiplier: 1, activeMs: 0, events: 0, warningShown: false };
-    }
-}
-
-function fillQueue() {
-    while (state.nextQueue.length < 5) {
-        const pulled = pullFromBag(bag, state.rng);
-        bag = pulled.bag;
-        state.nextQueue.push(pulled.type);
-    }
-}
-
 function spawnPiece() {
-    fillQueue();
-    const type = state.nextQueue.shift();
-    state.player.type = type;
-    state.player.matrix = createPiece(type);
-    state.player.rotation = 0;
-    state.player.pos.y = 0;
-    state.player.pos.x = Math.floor(COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
-    state.canHold = true;
-    fillQueue();
-    if (collide(state.arena, state.player)) {
-        if (state.mode === "zen") {
-            state.arena = createMatrix(COLS, ARENA_ROWS);
-            state.garbageCells = 0;
-        } else {
-            finish("failed", true);
-        }
+    const spawnResult = spawnCorePiece(state, gameplayActionDeps());
+    if (spawnResult?.gameOver) {
+        finish("failed", true);
     }
-    state.demo.move = state.demo.enabled ? chooseAutoMove(state.arena, state.player) : null;
-    renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
+    return spawnResult;
 }
 
 function applyStartingGarbage() {
@@ -698,77 +617,99 @@ function action(actionName) {
     if (actionName === "zen-clear") return clearZenBoard();
     if (actionName === "zen-undo") return undoZenStep();
     if (["left", "right", "down", "rotate", "rotateReverse", "drop", "hold"].includes(actionName)) logInput(actionName);
-    if (actionName === "left") move(-1);
-    if (actionName === "right") move(1);
-    if (actionName === "down") drop(true);
-    if (actionName === "rotate") rotatePlayer(1);
-    if (actionName === "rotateReverse") rotatePlayer(-1);
-    if (actionName === "drop") hardDrop();
-    if (actionName === "hold") hold();
+    if (actionName === "left") move(-1, "input");
+    if (actionName === "right") move(1, "input");
+    if (actionName === "down") drop(true, "input");
+    if (actionName === "rotate") rotatePlayer(1, "input");
+    if (actionName === "rotateReverse") rotatePlayer(-1, "input");
+    if (actionName === "drop") hardDrop("input");
+    if (actionName === "hold") hold("input");
     if (actionName === "ghost") toggleGhost();
 }
 
-function move(dir) {
-    state.player.pos.x += dir;
-    if (collide(state.arena, state.player)) {
-        state.player.pos.x -= dir;
-    } else {
-        resetLockDelay();
-        playTone(260, 0.025);
-    }
+function move(dir, source = "input") {
+    return executeCoreAction(dir < 0 ? "left" : "right", { source });
 }
 
-function rotatePlayer(dir) {
-    if (!rotateWithSrs(state.arena, state.player, dir)) return;
-    resetLockDelay();
-    playTone(330, 0.035);
+function rotatePlayer(dir, source = "input") {
+    return executeCoreAction(dir > 0 ? "rotate" : "rotateReverse", { source });
 }
 
-function drop(isSoft = false) {
-    state.player.pos.y++;
-    if (collide(state.arena, state.player)) {
-        state.player.pos.y--;
-        if (isSoft) lockCounter = state.settings.lockDelayMs;
-        else startLockDelay();
-    } else if (isSoft) {
-        state.score += 1;
-    }
-    dropCounter = 0;
+function drop(isSoft = false, source = "input") {
+    return executeCoreAction("down", { source });
 }
 
-function hardDrop() {
-    let distance = 0;
-    while (!collide(state.arena, state.player)) {
-        state.player.pos.y++;
-        distance++;
-    }
-    state.player.pos.y--;
-    state.score += Math.max(0, distance - 1) * 2;
-    state.lastSnapshot = snapshotArena();
-    const cleared = lockPiece();
-    dropCounter = 0;
-    if (!cleared) playTone(150, 0.05, "sawtooth");
+function hardDrop(source = "input") {
+    return executeCoreAction("drop", { source });
 }
 
 function lockPiece() {
-    merge(state.arena, state.player);
-    state.piecesPlaced++;
-    const clearedRows = sweepArena(state.arena);
-    const topOut = hasTopOut(state.arena);
-    state.garbageCells = countGarbageCells(state.arena);
-    state.lastClear = clearedRows.length;
-    if (clearedRows.length) {
-        const isTetrisClear = clearedRows.length === 4;
-        const continuesB2b = isTetrisClear && state.b2bChain > 0;
-        state.combo++;
-        state.maxCombo = Math.max(state.maxCombo, state.combo);
-        state.b2bChain = isTetrisClear ? state.b2bChain + 1 : 0;
-        state.score += scoreClear(clearedRows.length, state.level, state.combo);
-        state.lines += clearedRows.length;
-        if (isTetrisClear) state.tetrisCount++;
-        state.zoneMeter = Math.min(100, state.zoneMeter + clearedRows.length * 12 + (clearedRows.length === 4 ? 12 : 0));
-        state.level = Math.floor(state.lines / 10) + 1;
-        for (const y of clearedRows) renderer.burstLine(y, isTetrisClear ? 26 : 16);
+    return executeLockAndSpawn();
+}
+
+function hold(source = "input") {
+    return executeCoreAction("hold", { source });
+}
+
+function executeCoreAction(actionName, options = {}) {
+    const actionResult = applyCoreAction(state, actionName, gameplayActionDeps());
+    if (!actionResult || actionResult.ignored) return actionResult;
+
+    if (options.source === "repeat") logInput(actionName);
+
+    if (actionResult.action === "hardDrop" && actionResult.lockResult) {
+        const lockResult = actionResult.lockResult;
+        handleLockVisuals(lockResult);
+        if (lockResult.topOut && state.mode !== "zen") {
+            finish("failed", true);
+            return actionResult;
+        }
+        const spawnResult = spawnCorePiece(state, gameplayActionDeps());
+        if (spawnResult?.gameOver) {
+            finish("failed", true);
+            return actionResult;
+        }
+        if (!lockResult.topOut) evaluateResult();
+        return actionResult;
+    }
+
+    if (actionResult.action === "hold" && actionResult.gameOver && actionResult.topOut) {
+        finish("failed", true);
+        return actionResult;
+    }
+
+    return actionResult;
+}
+
+function executeLockAndSpawn() {
+    const lockResult = lockCurrentPiece(state, gameplayActionDeps());
+    handleLockVisuals(lockResult);
+    if (lockResult.topOut && state.mode !== "zen") {
+        finish("failed", true);
+        return { lockResult, linesCleared: lockResult.linesCleared || 0, gameOver: true };
+    }
+    const spawnResult = spawnCorePiece(state, gameplayActionDeps());
+    if (spawnResult?.gameOver) {
+        finish("failed", true);
+    } else {
+        evaluateResult();
+    }
+    return {
+        lockResult,
+        spawnResult,
+        linesCleared: lockResult.linesCleared || 0,
+        gameOver: Boolean(spawnResult?.gameOver),
+    };
+}
+
+function handleLockVisuals(lockResult) {
+    const clearRows = lockResult.clearRows || [];
+    if (lockResult.linesCleared) {
+        const isTetrisClear = lockResult.isTetrisClear;
+        state.piecesPlaced = lockResult.piecesPlaced || state.piecesPlaced;
+        for (const y of clearRows) {
+            renderer.burstLine(y, isTetrisClear ? 26 : 16);
+        }
         if (isTetrisClear) renderer.burstCenter("tetris");
         refreshComboBanner();
         elements.combo.classList.remove("animate");
@@ -776,62 +717,57 @@ function lockPiece() {
         elements.combo.classList.add("animate");
         setTimeout(() => elements.combo.classList.remove("animate"), 360);
         const detailParts = [];
-        if (state.combo > 0) detailParts.push(TEXT.game.combo(state.combo + 1));
-        if (continuesB2b) detailParts.push(backToBackText());
+        if (lockResult.combo > 0) detailParts.push(TEXT.game.combo(lockResult.combo + 1));
+        if (lockResult.continuesB2b) detailParts.push(backToBackText());
         showBoardFeedback(
-            isTetrisClear && TEXT.game.tetris ? TEXT.game.tetris : TEXT.game.lineClear(clearedRows.length),
+            isTetrisClear && TEXT.game.tetris ? TEXT.game.tetris : TEXT.game.lineClear(lockResult.linesCleared),
             joinText(detailParts),
-            isTetrisClear || state.combo >= 3 ? "big" : "combo",
+            isTetrisClear || lockResult.combo >= 3 ? "big" : "combo",
             isTetrisClear ? 1500 : 1100,
         );
-        if (state.combo >= 3) pulseBoardShake();
-        playLineClearSound(clearedRows.length, state.combo);
+        if (lockResult.combo >= 3) pulseBoardShake();
+        playLineClearSound(lockResult.linesCleared, lockResult.combo);
     } else {
-        state.combo = -1;
-        state.lastClear = 0;
         elements.combo.textContent = "";
     }
-    lockCounter = 0;
-    moveResetCount = 0;
-    if (state.level > previousLevel) {
-        previousLevel = state.level;
+    if (lockResult.levelUp) {
+        state.previousLevel = lockResult.levelAfter;
         renderer.burstCenter("level");
-        showBoardFeedback(TEXT.game.levelUp || "LEVEL UP!", `${TEXT.hud.level} ${state.level}`, "level", 1400);
+        showBoardFeedback(TEXT.game.levelUp || "LEVEL UP!", `${TEXT.hud.level} ${lockResult.levelAfter}`, "level", 1400);
         playTone(620, 0.12);
     }
-    if (topOut && state.mode !== "zen") {
-        finish("failed", true);
-        return clearedRows.length;
-    }
-    spawnPiece();
-    evaluateResult();
-    return clearedRows.length;
 }
 
-function hold() {
-    if (!state.canHold || state.rules.noHold) return;
-    const current = state.player.type;
-    if (state.holdPiece) {
-        state.player.type = state.holdPiece;
-        state.player.matrix = createPiece(state.player.type);
-        state.player.rotation = 0;
-        state.holdPiece = current;
-        state.player.pos.y = 0;
-        state.player.pos.x = Math.floor(COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
-        if (collide(state.arena, state.player)) finish("failed", true);
-    } else {
-        state.holdPiece = current;
-        spawnPiece();
-    }
-    state.canHold = false;
-    renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
-    playTone(520, 0.04);
+function gameplayActionDeps() {
+    return {
+        COLS,
+        createPiece,
+        pullFromBag,
+        collide,
+        rotateWithSrs,
+        merge,
+        sweepArena,
+        countGarbageCells,
+        hasTopOut,
+        scoreClear,
+        createMatrix,
+        snapshotArena,
+        renderPreviews: (nextQueue, holdPiece, previewCountValue) => {
+            renderer.renderPreviews(nextQueue, holdPiece, previewCountValue);
+        },
+        playTone,
+        chooseAutoMove,
+        isGrounded: stateForCheck => isCoreGrounded(stateForCheck, { collide }),
+        previewCount,
+        lastSnapshot: () => state.lastSnapshot,
+    };
 }
 
 function pauseGame() {
     if (state.screen === "playing") {
         state.screen = "paused";
-        renderPauseSummary();
+        renderPauseSummary(state, elements, { MODES, TEXT, joinText });
+        showStatusToast(TEXT.toast.paused, "warn", 1300);
         applyUiState();
     } else if (state.screen === "paused") {
         resumeGame();
@@ -842,12 +778,14 @@ function resumeGame() {
     if (state.screen !== "paused") return;
     state.screen = "playing";
     lastTime = performance.now();
+    closeHelpOverlay();
+    showStatusToast(TEXT.toast.resumed, "info", 1200);
     applyUiState();
 }
 
 function showMenu() {
     state.screen = "menu";
-    state.demo = { enabled: false, move: null, stepMs: 0 };
+    resetDemoState(state);
     state.player.matrix = null;
     buildModeMenu();
     buildStageMenu();
@@ -856,17 +794,17 @@ function showMenu() {
 
 function showStageSelect() {
     state.screen = "stageSelect";
-    state.demo = { enabled: false, move: null, stepMs: 0 };
+    resetDemoState(state);
     state.player.matrix = null;
     buildStageMenu();
     applyUiState();
 }
 
 function openSettings() {
-    settingsReturnScreen = state.screen;
+    uiState.settingsReturnScreen = state.screen;
     state.screen = "settings";
     showSettingsPanel("controls");
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
     applyUiState();
 }
 
@@ -880,13 +818,13 @@ function showSettingsPanel(panelId) {
 }
 
 function closeSettings() {
-    state.screen = settingsReturnScreen === "settings" ? "menu" : settingsReturnScreen;
+    state.screen = uiState.settingsReturnScreen === "settings" ? "menu" : uiState.settingsReturnScreen;
     applyUiState();
 }
 
 function toggleGhost() {
     updateSetting("ghostEnabled", !state.settings.ghostEnabled);
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
 }
 
 function updateSetting(key, value) {
@@ -895,10 +833,11 @@ function updateSetting(key, value) {
     saveData(data);
     if (key === "language") {
         applyLanguage(state.settings.language);
+        showStatusToast(`${TEXT.toast.languageChanged}: ${languageLabel(state.settings.language)}`, "info", 1700);
         return;
     }
     renderer.configure(state.settings);
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
     applyUiState();
     if (key === "nextPreviewCount" || key === "skin") {
         renderer.resize();
@@ -919,29 +858,8 @@ function resetSettings() {
     saveData(data);
     applyLanguage(state.settings.language);
     renderer.configure(state.settings);
-    syncSettingsForm();
+    syncSettingsForm(state, data, elements);
     applyUiState();
-}
-
-function syncSettingsForm() {
-    elements.marathonEndlessSetting.checked = state.settings.marathonEndless;
-    elements.languageSetting.value = state.settings.language;
-    elements.dasSetting.value = state.settings.dasMs;
-    elements.arrSetting.value = state.settings.arrMs;
-    elements.softDropSetting.value = state.settings.softDropMultiplier;
-    elements.lockDelaySetting.value = state.settings.lockDelayMs;
-    elements.nextPreviewSetting.value = state.settings.nextPreviewCount;
-    elements.dasValue.textContent = `${Math.round(state.settings.dasMs)} ms`;
-    elements.arrValue.textContent = `${Math.round(state.settings.arrMs)} ms`;
-    elements.softDropValue.textContent = `${Math.round(state.settings.softDropMultiplier)}x`;
-    elements.lockDelayValue.textContent = `${Math.round(state.settings.lockDelayMs)} ms`;
-    elements.ghostSetting.checked = state.settings.ghostEnabled;
-    elements.soundSetting.checked = state.settings.soundEnabled;
-    if (elements.soundVolumeSetting) elements.soundVolumeSetting.value = Math.round(currentSoundVolume() * 100);
-    elements.effectsSetting.value = state.settings.effectsLevel;
-    elements.skinSetting.value = state.settings.skin;
-    elements.hintsSetting.checked = state.settings.showHints;
-    if (elements.soundVolumeValue) elements.soundVolumeValue.textContent = `${Math.round(currentSoundVolume() * 100)}%`;
 }
 
 function bindSettingControls() {
@@ -961,89 +879,147 @@ function bindSettingControls() {
 }
 
 function evaluateResult() {
-    const result = MODES[state.mode].resultEvaluator(state);
+    const result = evaluateResultCore(state, { MODES });
     if (result !== "playing") finish(result, false);
 }
 
 function finish(result, isGameOver) {
     state.result = result;
     state.gameOver = isGameOver || result === "failed";
+    const finishPayload = finishRunCore(state, isGameOver, {
+        buildRunSummary,
+        isNewBest,
+        resultGrade,
+        updateBestScore,
+        markStageComplete,
+        recordGame,
+        unlockAchievements,
+        saveData,
+        data,
+        currentStage,
+        calculateStageStars,
+    });
     state.screen = "result";
-    const summary = buildRunSummary();
-    state.lastRunNewRecord = isNewBest(summary, data);
-    state.lastResultGrade = resultGrade(summary);
-    updateBestScore(data, state.mode, state.score, summary);
-    if (state.mode === "stages" && result === "success") markStageComplete(data, currentStage(state).id, summary.stars);
-    recordGame(data, summary);
-    const achievements = unlockAchievements(data, state);
-    if (achievements.length) saveData(data);
-    state.latestAchievements = achievements;
+    state.latestAchievements = finishPayload.achievements || [];
+    buildModeMenu();
+    buildStageMenu();
+    const resultViewModel = buildResultViewModel(null, state.latestAchievements);
+    renderResultScreen(state, resultViewModel, elements);
+    if (state.latestAchievements.length) saveData(data);
     renderer.burstCenter(result === "success" ? "level" : "gameover");
     playTone(result === "success" ? 700 : 90, result === "success" ? 0.14 : 0.18);
     if (state.lastRunNewRecord) {
         showBoardFeedback(resultNewRecordTitle(), resultNewRecordDetail(), "record", 1800);
     }
-    buildModeMenu();
-    buildStageMenu();
-    renderResult(achievements);
+    showStatusToast(state.gameOver
+        ? TEXT.toast.resultFailed
+        : TEXT.toast.resultCleared,
+        state.gameOver ? "warn" : "success",
+        1700,
+    );
     applyUiState();
 }
 
-function renderResult(achievements = []) {
-    const success = state.result === "success";
-    elements.resultLabel.textContent = state.gameOver ? TEXT.result.labelGameOver : TEXT.result.label;
-    elements.resultTitle.textContent = success ? TEXT.result.success : state.gameOver ? TEXT.result.gameOver : TEXT.result.done;
-    const pps = state.piecesPlaced / Math.max(state.elapsedMs / 1000, 1);
-    const kpp = state.inputs / Math.max(state.piecesPlaced, 1);
-    const timeLabel = state.mode === "sprint" || state.mode === "dig" ? formatPreciseTime(state.elapsedMs) : formatTime(state.elapsedMs);
-    const stats = state.gameOver
-        ? [
-            [TEXT.result.fields.score, state.score],
-            [TEXT.result.fields.lines, state.lines],
-            [TEXT.result.fields.level, state.level],
-            [TEXT.result.fields.time, timeLabel],
-        ]
-        : [
-            [TEXT.result.fields.score, state.score],
-            [TEXT.result.fields.best, bestLabel(state.mode)],
-            [TEXT.result.fields.lines, state.lines],
-            [TEXT.result.fields.level, state.level],
-            [TEXT.result.fields.maxCombo, comboValue(state.maxCombo)],
-            [TEXT.result.fields.time, timeLabel],
-            [TEXT.result.fields.pps, pps.toFixed(2)],
-            [TEXT.result.fields.kpp, kpp.toFixed(1)],
-        ];
-    if (state.mode === "stages") stats.push([TEXT.result.fields.stars, TEXT.game.valueSlashTotal(calculateStageStars(state), 3)]);
-    elements.resultStats.innerHTML = stats.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
-    if (elements.resultGrade) {
-        elements.resultGrade.textContent = resultGradeText(state.lastResultGrade);
-        elements.resultGrade.dataset.grade = state.lastResultGrade;
+function buildResultViewModel(summary, achievements = []) {
+    const resolvedSummary = summary || buildRunSummary();
+    const pps = resolvedSummary.piecesPlaced / Math.max(state.elapsedMs / 1000, 1);
+    const kpp = resolvedSummary.inputs / Math.max(resolvedSummary.piecesPlaced, 1);
+    return {
+        isSuccess: resolvedSummary.result === "success",
+        isGameOver: resolvedSummary.result === "failed" || state.gameOver,
+        score: resolvedSummary.score,
+        lines: resolvedSummary.lines,
+        level: resolvedSummary.level,
+        best: bestLabel(state.mode),
+        timeLabel: state.mode === "sprint" || state.mode === "dig" ? formatPreciseTime(resolvedSummary.elapsedMs) : formatTime(resolvedSummary.elapsedMs),
+        maxCombo: resolvedSummary.maxCombo,
+        pps: pps.toFixed(2),
+        kpp: kpp.toFixed(1),
+        stageStars: state.mode === "stages" ? TEXT.game.valueSlashTotal(calculateStageStars(state), 3) : null,
+        grade: resultGradeText(state.lastResultGrade),
+        gradeHint: resultGradeHint(state.lastResultGrade),
+        gradeState: state.lastResultGrade,
+        badgeState: state.lastRunNewRecord ? "active" : "idle",
+        badgeText: state.lastRunNewRecord ? resultNewRecordTitle() : (TEXT.result.newRecordPending || ""),
+        achievementNotice: achievements.length
+            ? `${TEXT.result.achievementPrefix}${achievements.map(achievementLabel).join(TEXT.common.comma)}`
+            : "",
+        replayHint: state.gameOver ? TEXT.result.restartHint : TEXT.result.replayHint,
+        comparison: buildResultComparison(resolvedSummary),
+        gradeLabel: TEXT.result.gradeLabel,
+    };
+}
+
+function buildResultComparison(resolvedSummary) {
+    const mode = resolvedSummary.mode;
+    const metric = compareMetricByMode(resolvedSummary);
+    const latestReplay = data.recentReplays?.[1];
+    const previousSummary = latestReplay?.mode === mode ? latestReplay?.result || null : null;
+    const previousMetric = previousSummary ? metric.value(previousSummary) : null;
+    const bestRecord = bestRecordForMode(resolvedSummary);
+    const bestMetric = bestRecord ? metric.value(bestRecord) : null;
+    const currentMetric = metric.value(resolvedSummary);
+
+    if (!Number.isFinite(previousMetric) && !Number.isFinite(bestMetric)) return null;
+
+    const rows = [];
+    if (Number.isFinite(previousMetric)) {
+        rows.push(buildComparisonRow(TEXT.result.comparisonLast, metric, previousMetric, currentMetric));
     }
-    if (elements.resultGradeHint) elements.resultGradeHint.textContent = resultGradeHint(state.lastResultGrade);
-    if (elements.resultRecordBadge) {
-        elements.resultRecordBadge.dataset.state = state.lastRunNewRecord ? "active" : "idle";
-        const badgeValue = elements.resultRecordBadge.querySelector("strong");
-        if (badgeValue) badgeValue.textContent = state.lastRunNewRecord ? resultNewRecordTitle() : (TEXT.result.newRecordPending || "");
+    if (Number.isFinite(bestMetric)) {
+        rows.push(buildComparisonRow(TEXT.result.comparisonBest, metric, bestMetric, currentMetric));
     }
-    elements.achievementNotice.textContent = achievements.length
-        ? `${TEXT.result.achievementPrefix}${achievements.map(achievementLabel).join(TEXT.common.comma)}`
-        : "";
-    let gameoverHint = document.getElementById("gameoverHint");
-    if (!gameoverHint) {
-        gameoverHint = document.createElement("p");
-        gameoverHint.id = "gameoverHint";
-        gameoverHint.className = "gameover-hint";
-        elements.resultStats.parentNode.insertBefore(gameoverHint, elements.resultStats.nextSibling);
+
+    return {
+        title: TEXT.result.comparisonTitle,
+        rows,
+    };
+}
+
+function compareMetricByMode(summary) {
+    if (summary.mode === "sprint" || summary.mode === "dig" || summary.mode === "daily") {
+        return {
+            value: value => Number(value.elapsedMs || 0),
+            format: value => formatPreciseTime(Number(value)),
+            valueKey: "elapsedMs",
+            lowerIsBetter: true,
+        };
     }
-    gameoverHint.textContent = state.gameOver ? TEXT.result.restartHint : TEXT.result.replayHint;
-    document.getElementById("improvementTips")?.remove();
+    return {
+        value: value => Number(value.score || 0),
+        format: value => `${Math.round(Number(value))}`,
+        valueKey: "score",
+        lowerIsBetter: false,
+    };
+}
+
+function bestRecordForMode(summary) {
+    if (summary.mode === "daily") return data.daily?.[summary.dailyKey] || null;
+    if (summary.mode === "sprint" || summary.mode === "dig") return data.bestScores?.[summary.mode] || null;
+    const best = data.bestScores?.[summary.mode];
+    return Number(best) > 0 ? { score: Number(best) } : null;
+}
+
+function buildComparisonRow(label, metric, baseValue, currentValue) {
+    const base = Number(baseValue);
+    const current = Number(currentValue);
+    if (!Number.isFinite(base) || !Number.isFinite(current)) return "";
+    const baselineDiff = current - base;
+    const isImproved = metric.lowerIsBetter ? baselineDiff < 0 : baselineDiff > 0;
+    const isSame = Math.abs(baselineDiff) < 1e-6;
+    const deltaText = isSame
+        ? `（${TEXT.result.deltaSame}）`
+        : `（${isImproved ? TEXT.result.deltaBetter : TEXT.result.deltaWorse} ${metric.format(Math.abs(baselineDiff))}）`;
+    const statusClass = isSame ? "same" : isImproved ? "better" : "worse";
+
+    return `<div class="result-comparison-item ${statusClass}"><span>${label}</span><strong>${metric.format(base)}</strong> <small>${deltaText}</small></div>`;
 }
 
 function applyUiState() {
     if (state.screen !== "playing") {
         clearPendingBoardTap();
-        previousBoardTap = null;
-        boardPointerDown = null;
+        uiState.previousBoardTap = null;
+        uiState.boardPointerDown = null;
     }
     for (const [name, screen] of Object.entries(elements.screens)) {
         screen.classList.toggle("active", name === state.screen);
@@ -1063,6 +1039,7 @@ function applyUiState() {
     document.body.classList.toggle("game-over", state.screen === "result" && state.gameOver);
     document.body.classList.toggle("training-hidden", !["training", "sprint", "ultra", "dig"].includes(state.mode));
     document.body.classList.toggle("next-preview-hidden", previewCount() === 0);
+    document.body.classList.toggle("hud-advanced-stats", Boolean(uiState.showAdvancedStats));
     elements.hints.hidden = !state.settings.showHints;
     elements.modeName.textContent = state.screen === "menu"
         ? TEXT.screens.menu
@@ -1079,21 +1056,21 @@ function applyUiState() {
         : state.screen === "stageSelect"
             ? TEXT.hud.chooseStage
             : MODES[state.mode].objectiveText(state);
-    if (state.screen === "paused") renderPauseSummary();
-    if (state.score !== lastDisplayedScore) {
+    if (state.screen === "paused") renderPauseSummary(state, elements, { MODES, TEXT, joinText });
+    if (state.score !== uiState.lastDisplayedScore) {
         elements.score.textContent = state.score;
         elements.score.parentElement.classList.remove("pop");
         void elements.score.parentElement.offsetWidth;
         elements.score.parentElement.classList.add("pop");
         setTimeout(() => elements.score.parentElement.classList.remove("pop"), 260);
-        lastDisplayedScore = state.score;
+        uiState.lastDisplayedScore = state.score;
     } else {
         elements.score.textContent = state.score;
     }
     elements.best.textContent = data.bestScores[state.mode] || 0;
     elements.lines.textContent = state.lines;
     elements.level.textContent = state.level;
-    if (state.level > previousLevel) {
+    if (state.level > state.previousLevel) {
         elements.level.parentElement.classList.add("level-up");
         setTimeout(() => elements.level.parentElement.classList.remove("level-up"), 650);
     }
@@ -1111,12 +1088,13 @@ function applyUiState() {
     elements.quickSoundToggle.classList.toggle("muted", !state.settings.soundEnabled);
     syncRendererLayout();
     syncFeedbackOverlayState();
+    syncTouchLayout();
 }
 
 function syncRendererLayout() {
-    if (pendingRendererLayoutFrame !== null) cancelAnimationFrame(pendingRendererLayoutFrame);
-    pendingRendererLayoutFrame = requestAnimationFrame(() => {
-        pendingRendererLayoutFrame = null;
+    if (uiState.pendingRendererLayoutFrame !== null) cancelAnimationFrame(uiState.pendingRendererLayoutFrame);
+    uiState.pendingRendererLayoutFrame = requestAnimationFrame(() => {
+        uiState.pendingRendererLayoutFrame = null;
         renderer.resize();
         renderer.renderPreviews(state.nextQueue, state.holdPiece, previewCount());
     });
@@ -1137,16 +1115,22 @@ function update(time = 0) {
     lastTime = time;
 
     if (state.screen === "playing") {
-        state.elapsedMs += deltaTime;
-        state.zoneActiveMs = Math.max(0, state.zoneActiveMs - deltaTime);
-        updateInputRepeat(deltaTime);
-        updateModeEvents(deltaTime);
-        runDemo(deltaTime);
-        const softMultiplier = keyState.down ? state.settings.softDropMultiplier : 1;
-        dropCounter += deltaTime * softMultiplier;
-        if (dropCounter > MODES[state.mode].speedCurve(state.level, state)) drop(keyState.down);
-        updateLockDelay(deltaTime);
-        evaluateResult();
+        const loopState = tickCore(state, deltaTime, {
+            keyState,
+            applyAction: (actionName, actionContext) => executeCoreAction(actionName, {
+                source: actionContext?.source || "tick",
+            }),
+            updateModeEvents: (state, deltaMs) => updateModeEvents(deltaMs),
+            getFallSpeed: currentState => MODES[currentState.mode].speedCurve(currentState.level, currentState),
+            isSoftDropActive: () => keyState.down,
+            onLock: () => executeLockAndSpawn(),
+            evaluateResult: () => evaluateResultCore(state, { MODES }),
+            chooseAutoMove,
+            reachedAutoMove,
+        });
+        if (loopState.result && loopState.result !== "playing" && state.screen === "playing") {
+            finish(loopState.result, false);
+        }
     }
 
     renderer.tickParticles(deltaTime);
@@ -1159,7 +1143,7 @@ function update(time = 0) {
 function updateLiveHud() {
     if (!["playing", "paused"].includes(state.screen)) return;
     elements.score.textContent = state.score;
-    lastDisplayedScore = state.score;
+    uiState.lastDisplayedScore = state.score;
     elements.lines.textContent = state.lines;
     elements.level.textContent = state.level;
     const minutes = Math.max(state.elapsedMs / 60000, 1 / 60);
@@ -1170,7 +1154,7 @@ function updateLiveHud() {
     elements.progressValue.textContent = progress.value;
     elements.progressBar.style.width = `${Math.max(0, Math.min(1, progress.ratio)) * 100}%`;
     refreshAiAssistButton();
-    if (state.screen === "paused") renderPauseSummary();
+    if (state.screen === "paused") renderPauseSummary(state, elements, { MODES, TEXT, joinText });
 }
 
 function refreshComboBanner() {
@@ -1223,13 +1207,13 @@ function runDemo(deltaTime) {
     state.demo.move = target;
 
     if (target.rotation > 0) {
-        rotatePlayer(1);
+        rotatePlayer(1, "demo");
         target.rotation--;
         return;
     }
-    if (state.player.pos.x < target.x) return move(1);
-    if (state.player.pos.x > target.x) return move(-1);
-    if (reachedAutoMove(state.player, target)) hardDrop();
+    if (state.player.pos.x < target.x) return move(1, "demo");
+    if (state.player.pos.x > target.x) return move(-1, "demo");
+    if (reachedAutoMove(state.player, target)) hardDrop("demo");
 }
 
 function pressHorizontal(name) {
@@ -1247,110 +1231,31 @@ function releaseHorizontal(name) {
     keyState[name].arr = 0;
 }
 
-function updateInputRepeat(deltaTime) {
-    for (const [name, entry] of Object.entries({ left: keyState.left, right: keyState.right })) {
-        if (!entry.down) continue;
-        entry.das += deltaTime;
-        if (entry.das < state.settings.dasMs) continue;
-        entry.arr += deltaTime;
-        const interval = Math.max(1, state.settings.arrMs);
-        while (entry.arr >= interval) {
-            entry.arr -= interval;
-            action(name);
-            if (state.settings.arrMs === 0) break;
-        }
-    }
-}
-
-function startLockDelay() {
-    if (lockCounter <= 0) lockCounter = 1;
-}
-
-function resetLockDelay() {
-    if (!isGrounded() || moveResetCount >= 15) return;
-    lockCounter = 1;
-    moveResetCount++;
-}
-
-function updateLockDelay(deltaTime) {
-    if (!state.player.matrix || !isGrounded()) {
-        lockCounter = 0;
-        return;
-    }
-    if (lockCounter <= 0) lockCounter = 1;
-    lockCounter += deltaTime;
-    if (lockCounter >= state.settings.lockDelayMs) lockPiece();
-}
-
-function isGrounded() {
-    if (!state.player.matrix) return false;
-    state.player.pos.y++;
-    const grounded = collide(state.arena, state.player);
-    state.player.pos.y--;
-    return grounded;
-}
-
 function updateModeEvents(deltaTime) {
-    if (state.rules.periodicGarbageMs) {
-        state.garbageTickMs += deltaTime;
-        if (state.garbageTickMs >= state.rules.periodicGarbageMs) {
-            state.garbageTickMs = 0;
-            makeGarbage(state.arena, 1, { rng: state.rng, pattern: currentStage(state).garbagePattern });
-            state.garbageCells = countGarbageCells(state.arena);
-            renderer.burstCenter("gameover");
-        }
+    const modeEvents = updateModeEventsCore(state, deltaTime, {
+        makeGarbage,
+        countGarbageCells,
+        currentStage: () => currentStage(state),
+        TEXT,
+    });
+
+    if (modeEvents?.periodicGarbage) renderer.burstCenter("gameover");
+
+    if (modeEvents?.mystery?.warningShown) {
+        showBoardFeedback(mysteryWarningTitle(), mysteryWarningDetail(), "warning", 1100);
+    }
+    if (modeEvents?.mystery?.timerVisible && elements.feedbackTimer && elements.feedbackTimerValue) {
+        elements.feedbackTimer.hidden = false;
+        elements.feedbackTimerValue.textContent = formatTime(Math.max(0, Math.round(modeEvents.mystery.nextInMs || 0)));
+    }
+    if (modeEvents?.mystery?.triggered) {
+        if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
+        const label = state.mystery?.activeLabel;
+        showBoardFeedback(TEXT.game.mystery(label || ""), backToBackText(false), "warning", 1500);
+        refreshComboBanner();
     }
 
-    if (state.mystery) {
-        state.mystery.nextInMs -= deltaTime;
-        state.mystery.activeMs = Math.max(0, state.mystery.activeMs - deltaTime);
-        if (state.mystery.activeMs <= 0) {
-            state.hiddenBlocksActive = false;
-            state.mystery.speedMultiplier = 1;
-        }
-        if (!state.mystery.warningShown && state.mystery.nextInMs > 0 && state.mystery.nextInMs <= 3000) {
-            state.mystery.warningShown = true;
-            showBoardFeedback(mysteryWarningTitle(), mysteryWarningDetail(), "warning", 1100);
-        }
-        if (state.mystery.warningShown && state.mystery.nextInMs > 0 && state.mystery.nextInMs <= 3000 && elements.feedbackTimer && elements.feedbackTimerValue) {
-            elements.feedbackTimer.hidden = false;
-            elements.feedbackTimerValue.textContent = formatTime(state.mystery.nextInMs);
-        }
-        if (state.mystery.nextInMs <= 0) triggerMysteryEvent();
-    }
-}
-
-function triggerMysteryEvent() {
-    const events = [
-        () => {
-            state.mystery.activeLabel = TEXT.game.mysteryEvents.speed;
-            state.mystery.speedMultiplier = 0.62;
-            state.mystery.activeMs = 8000;
-        },
-        () => {
-            state.mystery.activeLabel = TEXT.game.mysteryEvents.hidden;
-            state.hiddenBlocksActive = true;
-            state.mystery.activeMs = 5000;
-        },
-        () => {
-            state.mystery.activeLabel = TEXT.game.mysteryEvents.reversePreview;
-            state.nextQueue.reverse();
-            state.mystery.activeMs = 6000;
-        },
-        () => {
-            state.mystery.activeLabel = TEXT.game.mysteryEvents.garbage;
-            makeGarbage(state.arena, 1, { rng: state.rng });
-            state.garbageCells = countGarbageCells(state.arena);
-            state.mystery.activeMs = 6000;
-        },
-    ];
-    events[Math.floor(state.rng() * events.length)]();
-    state.mystery.events++;
-    state.mystery.nextInMs = 30000;
-    if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
-    state.mystery.warningShown = false;
-    showBoardFeedback(TEXT.game.mystery(state.mystery.activeLabel), backToBackText(false), "warning", 1500);
-    refreshComboBanner();
+    return modeEvents;
 }
 
 function clearZenBoard() {
@@ -1424,77 +1329,23 @@ function bestLabel(modeId) {
     return `${TEXT.best.prefix} ${Number(best) || 0}`;
 }
 
-function comboValue(comboCount) {
-    return comboCount > 0 ? TEXT.game.comboValue(comboCount + 1) : "0";
-}
-
 function totalStars() {
     return Object.values(data.stageStars).reduce((sum, stars) => sum + Number(stars || 0), 0);
 }
 
 function showProfile() {
     state.screen = "profile";
-    state.demo = { enabled: false, move: null, stepMs: 0 };
-    renderProfile();
+    resetDemoState(state);
+    renderProfileScreen(data, elements);
     applyUiState();
 }
 
 function resetProfileRecords() {
     if (!window.confirm(TEXT.profile.resetConfirm)) return;
     resetRecords(data);
-    renderProfile();
+    renderProfileScreen(data, elements);
     buildModeMenu();
     applyUiState();
-}
-
-function renderProfile() {
-    const totals = data.totals;
-    const averagePps = totals.pieces / Math.max(totals.playTimeMs / 1000, 1);
-    const summary = [
-        [TEXT.profile.summary.games, totals.games],
-        [TEXT.profile.summary.time, formatTime(totals.playTimeMs)],
-        [TEXT.profile.summary.bestScore, Math.max(...Object.values(data.bestScores).filter(value => typeof value === "number"), 0)],
-        [TEXT.profile.summary.bestSprint, data.bestScores.sprint?.elapsedMs ? formatPreciseTime(data.bestScores.sprint.elapsedMs) : "-"],
-        [TEXT.profile.summary.averagePps, averagePps.toFixed(2)],
-        [TEXT.profile.summary.tetris, totals.tetris],
-        [TEXT.profile.summary.maxCombo, comboValue(totals.maxCombo)],
-        [TEXT.profile.summary.stars, TEXT.game.valueSlashTotal(totalStars(), STAGES.length * 3)],
-    ];
-    elements.profileSummary.innerHTML = `
-        <table class="profile-table">
-            <tbody>
-                ${summary.map(([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`).join("")}
-            </tbody>
-        </table>
-    `;
-    const achievements = Object.keys(data.achievements);
-    elements.achievementList.innerHTML = ACHIEVEMENT_IDS.map(id => {
-        const unlocked = achievements.includes(id);
-        const progress = describeAchievementProgress(id, data, { maxCombo: totals.maxCombo });
-        const label = achievementLabel(id);
-        const suffix = progress && !unlocked ? ` <small>${progress.display}</small>` : "";
-        return `<li data-state="${unlocked ? "unlocked" : "locked"}"><span>${label}${suffix}</span></li>`;
-    }).join("") || `<li>${TEXT.profile.emptyAchievements}</li>`;
-    elements.replayList.innerHTML = data.recentReplays.length
-        ? `
-            <li class="replay-row replay-head"><span>${TEXT.profile.replayHead.mode}</span><span>${TEXT.profile.replayHead.result}</span><span>${TEXT.profile.replayHead.score}</span><span>${TEXT.profile.replayHead.seed}</span></li>
-            ${data.recentReplays.map(replay => `
-                <li class="replay-row">
-                    <span>${MODES[replay.mode]?.label || replay.mode}</span>
-                    <span>${resultText(replay.result.result)}</span>
-                    <span>${replay.result.score}</span>
-                    <span>${replay.seed}</span>
-                </li>
-            `).join("")}
-        `
-        : `<li>${TEXT.profile.emptyReplays}</li>`;
-}
-
-function resultText(result) {
-    if (result === "success") return TEXT.status.success;
-    if (result === "failed") return TEXT.status.failed;
-    if (result === "playing") return TEXT.status.playing;
-    return result;
 }
 
 function playTone(frequency, duration, type = "triangle") {
@@ -1535,12 +1386,6 @@ function playScheduledTone(frequency, duration, type = "triangle", delay = 0, vo
     oscillator.stop(startAt + duration);
 }
 
-function renderPauseSummary() {
-    if (!elements.pauseSummary) return;
-    const progress = MODES[state.mode]?.progress(state) || { value: "-" };
-    elements.pauseSummary.textContent = pauseSummaryText(progress.value);
-}
-
 function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) {
     if (!elements.feedbackOverlay || !elements.feedbackTitle || !elements.feedbackDetail) return;
     const effectiveDuration = feedbackDuration(duration, tone);
@@ -1552,8 +1397,8 @@ function showBoardFeedback(title, detail = "", tone = "combo", duration = 1200) 
     elements.feedbackOverlay.dataset.state = "active";
     elements.feedbackOverlay.dataset.tone = tone;
     if (elements.feedbackTimer) elements.feedbackTimer.hidden = true;
-    if (boardFeedbackTimer) clearTimeout(boardFeedbackTimer);
-    boardFeedbackTimer = window.setTimeout(() => {
+    if (uiState.boardFeedbackTimer) clearTimeout(uiState.boardFeedbackTimer);
+    uiState.boardFeedbackTimer = window.setTimeout(() => {
         elements.feedbackOverlay.dataset.state = "idle";
         elements.feedbackOverlay.dataset.tone = "";
         if (elements.feedbackTag) elements.feedbackTag.textContent = TEXT.feedback.combo;
@@ -1598,17 +1443,6 @@ function feedbackTag(tone) {
     return TEXT.feedback.combo || "Combo";
 }
 
-function pauseSummaryText(progressValue) {
-    if (typeof TEXT.pause.summaryStats === "function") {
-        return TEXT.pause.summaryStats({
-            mode: MODES[state.mode]?.label || "",
-            progress: progressValue,
-            score: state.score,
-        });
-    }
-    return joinText([MODES[state.mode]?.label || "", progressValue, `${TEXT.hud.score} ${state.score}`]);
-}
-
 function mysteryWarningTitle() {
     return TEXT.game.mysteryWarningTitle || "MYSTERY";
 }
@@ -1635,4 +1469,105 @@ function currentSoundVolume() {
     const normalized = Number(state.settings.soundVolume);
     if (Number.isFinite(normalized)) return Math.max(0, Math.min(1, normalized));
     return 0.8;
+}
+
+function readUiPreference(key, fallback) {
+    try {
+        const raw = window.localStorage.getItem(key);
+        if (raw === null) return fallback;
+        if (raw === "1") return true;
+        if (raw === "0") return false;
+        if (raw === "true") return true;
+        if (raw === "false") return false;
+    } catch {
+    }
+    return fallback;
+}
+
+function writeUiPreference(key, value) {
+    try {
+        window.localStorage.setItem(key, value ? "1" : "0");
+    } catch {}
+}
+
+function isActionDebounced(actionName) {
+    const now = performance.now();
+    if (!uiState.touchActionCooldownByAction) uiState.touchActionCooldownByAction = {};
+    const previous = uiState.touchActionCooldownByAction[actionName] || 0;
+    if (now < previous) return true;
+    uiState.touchActionCooldownByAction[actionName] = now + TOUCH_ACTION_COOLDOWN_MS;
+    return false;
+}
+
+function toggleAdvancedStats() {
+    uiState.showAdvancedStats = !uiState.showAdvancedStats;
+    writeUiPreference(ADVANCED_STATS_STORAGE_KEY, uiState.showAdvancedStats);
+    applyUiState();
+    showStatusToast(
+        uiState.showAdvancedStats ? TEXT.toast.advancedStatsOn : TEXT.toast.advancedStatsOff,
+        "info",
+        1000,
+    );
+}
+
+function openHelpOverlay() {
+    const helpOverlay = document.getElementById("helpOverlay");
+    if (!helpOverlay) return;
+    if (helpOverlay.dataset.state === "active") return;
+    helpOverlay.hidden = false;
+    helpOverlay.dataset.state = "active";
+    helpOverlay.setAttribute("aria-hidden", "false");
+    uiState.helpOverlaySeen = true;
+    writeUiPreference(HELP_OVERLAY_STORAGE_KEY, true);
+    showStatusToast(TEXT.toast.helpOpened, "info", 1000);
+}
+
+function closeHelpOverlay() {
+    const helpOverlay = document.getElementById("helpOverlay");
+    if (!helpOverlay) return;
+    if (helpOverlay.dataset.state !== "active") return;
+    helpOverlay.dataset.state = "idle";
+    helpOverlay.hidden = true;
+    helpOverlay.setAttribute("aria-hidden", "true");
+}
+
+function toggleHelpOverlay() {
+    const helpOverlay = document.getElementById("helpOverlay");
+    if (!helpOverlay) return;
+    if (helpOverlay.dataset.state === "active") {
+        closeHelpOverlay();
+        showStatusToast(TEXT.toast.helpClosed, "warn", 900);
+    } else {
+        openHelpOverlay();
+    }
+}
+
+function syncTouchLayout() {
+    const touchPad = document.querySelector(".touch-pad");
+    if (!touchPad) return;
+    const prefersTouch = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(hover: none)").matches || (navigator.maxTouchPoints || 0) > 0;
+    touchPad.classList.toggle("compact", window.innerWidth <= 420 && prefersTouch);
+}
+
+function showStatusToast(message, kind = "info", duration = 1200) {
+    if (!elements.statusToast || !elements.statusToastText) return;
+    if (uiState.statusToastTimer) clearTimeout(uiState.statusToastTimer);
+    elements.statusToastText.textContent = String(message || "");
+    elements.statusToast.dataset.kind = kind;
+    elements.statusToast.dataset.state = "active";
+    elements.statusToast.setAttribute("aria-hidden", "false");
+    elements.statusToast.hidden = false;
+    uiState.statusToastTimer = window.setTimeout(() => {
+        elements.statusToast.dataset.state = "idle";
+        elements.statusToast.setAttribute("aria-hidden", "true");
+        elements.statusToast.hidden = true;
+    }, Math.max(700, duration));
+}
+
+function languageLabel(language) {
+    if (language === "auto") return TEXT.settings?.gameplay?.languageAuto || "Auto";
+    if (language === "en") return "English";
+    if (language === "zh-Hant") return TEXT.settings?.gameplay?.languageZhHant || "繁體中文";
+    if (language === "ja") return TEXT.settings?.gameplay?.languageJapanese || "日本語";
+    return language;
 }

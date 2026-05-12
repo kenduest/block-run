@@ -15,7 +15,16 @@
 - `game/src/renderer.js`: board, hold, next queue, and visual rendering.
 - `game/src/modes.js`: mode definitions, stages, daily/challenge data.
 - `game/src/storage.js`: local records, settings, stats, achievements, replay summaries.
-- `game/src/i18n.js`: UI copy. Prefer editing text here instead of scattering strings.
+- `game/src/i18n.js`: public i18n entrypoint kept for backward compatibility (`TEXT`, `setLanguage`, `getCurrentLanguage`, `applyStaticText`, `joinText`).
+- `game/src/services/i18n/index.js`: i18n runtime entry with language switching and public function contracts.
+- `game/src/services/i18n/runtime.js`: shared i18n utilities (`detectBrowserLanguage`, `textAt`, `joinText`, `applyStaticText` helpers).
+- `game/src/services/i18n/locales/en.js`, `zh-Hant.js`, `ja.js`: locale dictionaries.
+
+## i18n modularization notes
+
+- Keep all user-facing text inside `game/src/services/i18n/locales/*.js`.
+- Keep compatibility imports unchanged for existing modules by importing from `game/src/i18n.js`.
+- New or refactored code may import directly from `game/src/services/i18n/index.js?v=__APP_VERSION__` when needed.
 
 ## Run and verify
 

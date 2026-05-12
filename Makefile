@@ -5,7 +5,7 @@ NODE ?= node
 GAME_DIR := game
 GAME_ENTRY := $(GAME_DIR)/index.html
 
-SRC_JS := $(wildcard $(GAME_DIR)/src/*.js)
+SRC_JS := $(shell find $(GAME_DIR)/src -name '*.js')
 TESTS := $(wildcard tests/*.test.mjs)
 
 .PHONY: help serve dev url check test verify package pages-artifact clean

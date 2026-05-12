@@ -23,6 +23,40 @@
                         </div>
                     </div>
                 </div>
+                <div id="helpOverlay" class="help-overlay" role="dialog" aria-modal="true" aria-labelledby="helpOverlayTitle" aria-hidden="true" hidden>
+                    <div class="help-overlay-inner">
+                        <div class="help-overlay-header">
+                            <h2 id="helpOverlayTitle" data-i18n="help.title">遊戲提示</h2>
+                    <button type="button" id="helpOverlayClose" class="help-close" data-command="toggle-help" data-i18n-title="help.close" data-i18n-aria-label="help.close" aria-label="關閉提示"></button>
+                        </div>
+                        <p id="helpOverlaySubtitle" data-i18n="help.subtitle">第一次開始，先看這裡一次，建立手感會快很多。</p>
+                        <div class="help-overlay-grid">
+                            <section class="help-block">
+                                <h3 data-i18n="help.pcTitle">桌機操作</h3>
+                                <ul>
+                                    <li><kbd>P</kbd> <span data-i18n="help.pcPause">暫停 / 繼續</span></li>
+                                    <li><kbd>空白鍵</kbd> <span data-i18n="help.pcStart">開始遊戲或硬降</span></li>
+                                    <li><kbd>Enter</kbd> <span data-i18n="help.pcRestart">回到選單後可直接重玩</span></li>
+                                    <li><kbd>R</kbd> <span data-i18n="help.pcRestartRun">重玩本局</span></li>
+                                    <li><kbd>Shift</kbd> + <kbd>?</kbd> <span data-i18n="help.pcToggleHint">切換提示覆蓋層</span></li>
+                                </ul>
+                            </section>
+                            <section class="help-block">
+                                <h3 data-i18n="help.mobileTitle">手機觸控</h3>
+                                <ul>
+                                    <li><span data-i18n="help.mobileSwipe">左/右滑：位移；上滑：硬降；下滑：快速下落</span></li>
+                                    <li><span data-i18n="help.mobileTap">快速雙擊棋盤：旋轉（副軸）</span></li>
+                                    <li><span data-i18n="help.mobilePress">長按下鍵：持續下落</span></li>
+                                    <li><span data-i18n="help.mobilePanel">觸控面板：支援左/右/旋轉/下落</span></li>
+                                </ul>
+                            </section>
+                        </div>
+                        <button type="button" class="help-dismiss" data-command="toggle-help" data-i18n="help.gotIt">我知道了</button>
+                    </div>
+                </div>
+                <div id="statusToast" class="status-toast" role="status" aria-live="polite" aria-atomic="true" hidden>
+                    <span id="statusToastText"></span>
+                </div>
                 <div id="screenLayer" class="screen-layer">
                     <section id="menuScreen" class="screen active" aria-label="主選單" data-i18n-aria-label="static.menuAria">
                         <div class="brand-block">
@@ -72,6 +106,7 @@
                             </div>
                         </div>
                         <div id="resultStats" class="result-grid"></div>
+                        <div id="resultComparison"></div>
                         <p id="achievementNotice" class="achievement-notice"></p>
                         <div class="screen-actions">
                             <button type="button" class="primary" data-command="restart" data-i18n="actions.playAgain">再玩一次</button>
@@ -215,6 +250,8 @@
                     <h2 id="objectiveText" data-i18n="hud.chooseMode">選擇模式開始</h2>
                 </div>
                 <div class="hud-header-right">
+                    <button type="button" id="helpToggleButton" class="icon-btn" data-command="toggle-help" data-i18n-title="help.buttonTitle" data-i18n-aria-label="help.buttonTitle" aria-label="顯示操作提示">?</button>
+                    <button type="button" id="statToggleButton" class="icon-btn" data-command="toggle-advanced-stats" data-i18n-title="hud.toggleAdvancedStats" data-i18n-aria-label="hud.toggleAdvancedStats" aria-label="切換進階統計">±</button>
                     <button type="button" id="quickSoundToggle" class="icon-btn" title="切換音效" aria-label="切換音效" data-i18n-title="hud.soundToggle" data-i18n-aria-label="hud.soundToggle">🔊</button>
                     <span id="statusBadge" class="status-badge" data-i18n="status.ready">準備</span>
                 </div>
@@ -225,8 +262,8 @@
                 <div class="stat"><span data-i18n="hud.bestScore">最高分</span><strong id="bestValue">0</strong></div>
                 <div class="stat"><span data-i18n="hud.lines">行數</span><strong id="linesValue">0</strong></div>
                 <div class="stat"><span data-i18n="hud.level">等級</span><strong id="levelValue">1</strong></div>
-                <div class="stat training-only"><span>PPS</span><strong id="ppsValue">0.00</strong></div>
-                <div class="stat training-only"><span>LPM</span><strong id="lpmValue">0.0</strong></div>
+                <div class="stat advanced-stat"><span>PPS</span><strong id="ppsValue">0.00</strong></div>
+                <div class="stat advanced-stat"><span>LPM</span><strong id="lpmValue">0.0</strong></div>
             </section>
 
             <section class="preview-grid" aria-label="下一顆與保留" data-i18n-aria-label="static.previewAria">
@@ -263,11 +300,11 @@
                 <button type="button" class="wide secondary-action" data-command="menu" data-i18n="actions.abandonToMenu">放棄並選模式</button>
             </section>
 
-             <section id="hintsPanel" class="hints">
-                <h3 class="hud-section-title" data-i18n="hud.keys">鍵位</h3>
-                <div class="key-map">
-                    <div><span><kbd>←</kbd><kbd>→</kbd></span><b data-i18n="keys.move">移動</b></div>
-                    <div><span><kbd>↑</kbd><kbd>X</kbd></span><b data-i18n="keys.rotate">旋轉</b></div>
+                    <section id="hintsPanel" class="hints">
+                        <h3 class="hud-section-title" data-i18n="hud.keys">鍵位</h3>
+                        <div class="key-map">
+                            <div><span><kbd>←</kbd><kbd>→</kbd></span><b data-i18n="keys.move">移動</b></div>
+                            <div><span><kbd>↑</kbd><kbd>X</kbd></span><b data-i18n="keys.rotate">旋轉</b></div>
                     <div><span><kbd>Z</kbd></span><b data-i18n="keys.reverse">反轉</b></div>
                     <div><span><kbd>↓</kbd></span><b data-i18n="keys.softDrop">軟降</b></div>
                     <div><span><kbd>Space</kbd></span><b data-i18n="keys.hardDrop">硬降</b></div>
@@ -279,23 +316,23 @@
                 </div>
             </section>
 
-            <section class="touch-pad" aria-label="觸控控制" data-i18n-aria-label="static.touchAria">
-                <div class="touch-toolbar" role="group" aria-label="快速操作">
-                    <button type="button" id="touchAiAssistButton" class="ai-action" data-command="toggle-ai" data-i18n="actions.aiAssist">AI 接手</button>
-                    <button type="button" data-action="hold" data-i18n="actions.hold">保留</button>
-                    <button type="button" data-command="pause" data-i18n="actions.pause">暫停</button>
-                    <button type="button" data-command="restart" data-i18n="actions.restart">重開</button>
-                    <button type="button" data-action="drop" aria-label="硬降">⤓</button>
-                </div>
-                <div class="touch-primary" role="group" aria-label="主要控制">
-                    <button type="button" data-action="left" aria-label="向左">←</button>
-                    <button type="button" data-action="rotateReverse" aria-label="反向旋轉">↺</button>
-                    <button type="button" data-action="down" aria-label="軟降">↓</button>
-                    <button type="button" data-action="rotate" aria-label="旋轉">↻</button>
-                    <button type="button" data-action="right" aria-label="向右">→</button>
-                </div>
-            </section>
-        </aside>
+                        <section class="touch-pad" aria-label="觸控控制" data-i18n-aria-label="static.touchAria">
+                        <div class="touch-toolbar" role="group" data-i18n-aria-label="static.touchToolbarAria">
+                            <button type="button" id="touchAiAssistButton" class="ai-action screen-command-ai" data-command="toggle-ai" data-i18n="actions.aiAssist" data-i18n-title="actions.aiAssist" data-i18n-aria-label="actions.aiAssist">AI 接手</button>
+                            <button type="button" data-action="hold" data-i18n="actions.hold" data-i18n-title="actions.hold" data-i18n-aria-label="actions.hold">保留</button>
+                            <button type="button" data-command="pause" data-i18n="actions.pause" data-i18n-title="actions.pause" data-i18n-aria-label="actions.pause">暫停</button>
+                            <button type="button" data-command="restart" data-i18n="actions.restart" data-i18n-title="actions.restart" data-i18n-aria-label="actions.restart">重開</button>
+                            <button type="button" data-action="drop" data-i18n-aria-label="keys.hardDrop" data-i18n-title="keys.hardDrop" aria-label="硬降">⤓</button>
+                        </div>
+                        <div class="touch-primary" role="group" data-i18n-aria-label="static.touchPrimaryAria">
+                            <button type="button" data-action="left" data-i18n-aria-label="touch.left" data-i18n-title="touch.left">←</button>
+                            <button type="button" data-action="rotateReverse" data-i18n-aria-label="touch.rotateReverse" data-i18n-title="touch.rotateReverse">↺</button>
+                            <button type="button" data-action="down" data-i18n-aria-label="touch.down" data-i18n-title="touch.down">↓</button>
+                            <button type="button" data-action="rotate" data-i18n-aria-label="touch.rotate" data-i18n-title="touch.rotate">↻</button>
+                            <button type="button" data-action="right" data-i18n-aria-label="touch.right" data-i18n-title="touch.right">→</button>
+                        </div>
+                    </section>
+                </aside>
     </main>
 
     <script type="module" src="./src/game.js?v=__APP_VERSION__"></script>

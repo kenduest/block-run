@@ -1,0 +1,86 @@
+export const DEFAULT_GAME_STATE = {
+    screen: "menu",
+    mode: "marathon",
+    stageIndex: 0,
+    score: 0,
+    lines: 0,
+    level: 1,
+    previousLevel: 1,
+    b2bChain: 0,
+    combo: -1,
+    maxCombo: 0,
+    lastClear: 0,
+    tetrisCount: 0,
+    zoneMeter: 0,
+    zoneActiveMs: 0,
+    garbageCells: 0,
+    startingGarbageCells: 0,
+    elapsedMs: 0,
+    startedAt: 0,
+    piecesPlaced: 0,
+    inputs: 0,
+    inputLog: [],
+    lastSnapshot: null,
+    seed: 0,
+    rng: null,
+    rules: {},
+    dailyKey: null,
+    dailyRules: null,
+    mystery: null,
+    hiddenBlocksActive: false,
+    garbageTickMs: 0,
+    result: "playing",
+    gameOver: false,
+    latestAchievements: [],
+    lastResultGrade: "C",
+    lastRunNewRecord: false,
+    arena: null,
+    player: null,
+    nextQueue: [],
+    holdPiece: null,
+    canHold: true,
+    demo: null,
+};
+
+export const DEFAULT_UI_SETTINGS = {
+    activeMenuGroup: "featured",
+    pendingRendererLayoutFrame: null,
+    lastDisplayedScore: 0,
+    previousLevel: 1,
+    settingsReturnScreen: "menu",
+    pendingBoardTap: null,
+    previousBoardTap: null,
+    boardPointerDown: null,
+    boardFeedbackTimer: null,
+    statusToastTimer: null,
+    showAdvancedStats: false,
+    helpOverlaySeen: false,
+    touchActionCooldownByAction: {},
+    keyState: {
+        left: { down: false, das: 0, arr: 0 },
+        right: { down: false, das: 0, arr: 0 },
+        down: false,
+    },
+};
+
+export const DEFAULT_QUEUE_TARGET = 5;
+
+export const DEFAULT_PLAYER_STATE = {
+    pos: { x: 0, y: 0 },
+    matrix: null,
+    type: null,
+    rotation: 0,
+};
+
+export const DEFAULT_RUN_COUNTERS = {
+    bag: [],
+    dropCounter: 0,
+    lockCounter: 0,
+    moveResetCount: 0,
+};
+
+export const DEFAULT_DEMO_STATE = {
+    enabled: false,
+    move: null,
+    stepMs: 0,
+};

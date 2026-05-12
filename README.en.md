@@ -7,9 +7,7 @@ There is no backend, no account system, and no framework build pipeline. The foc
 
 ## Live demo
 
-```text
-https://kenduest.github.io/block-run/
-```
+[https://kenduest.github.io/block-run/](https://kenduest.github.io/block-run/)
 
 ## Screenshots
 
@@ -31,9 +29,7 @@ https://kenduest.github.io/block-run/
 
 Open:
 
-```text
-https://kenduest.github.io/block-run/
-```
+[https://kenduest.github.io/block-run/](https://kenduest.github.io/block-run/)
 
 ### Option 2: Run locally
 
@@ -128,8 +124,13 @@ make package
 - `game/src/renderer.js`: board, next queue, and hold rendering
 - `game/src/modes.js`: mode and stage data
 - `game/src/storage.js`: local persistence
-- `game/src/i18n.js`: centralized UI copy
+- `game/src/i18n.js`: language and text resources
 - `scripts/build-single-file.mjs`: standalone packaging script
+
+For architecture details (including i18n modularization, contribution guidance, and implementation notes), see:
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/README.md](./docs/README.md)
 
 ## License
 

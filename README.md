@@ -7,9 +7,7 @@
 
 ## 線上遊玩
 
-```text
-https://kenduest.github.io/block-run/
-```
+[https://kenduest.github.io/block-run/](https://kenduest.github.io/block-run/)
 
 ## 畫面預覽
 
@@ -31,9 +29,7 @@ https://kenduest.github.io/block-run/
 
 打開：
 
-```text
-https://kenduest.github.io/block-run/
-```
+[https://kenduest.github.io/block-run/](https://kenduest.github.io/block-run/)
 
 ### 方法 2：本機啟動
 
@@ -128,8 +124,13 @@ make package
 - `game/src/renderer.js`：棋盤、Next Queue、Hold 繪製
 - `game/src/modes.js`：模式與關卡資料
 - `game/src/storage.js`：本機資料儲存
-- `game/src/i18n.js`：文案集中管理
-- `scripts/build-single-file.mjs`：單檔離線版打包腳本
+- `game/src/i18n.js`：語系與主要文字
+- `scripts/build-single-file.mjs`：離線版打包腳本
+
+如需架構文件（含 i18n 模組化、開發規則、進階資料夾說明），請看：
+
+- [AGENTS.md](./AGENTS.md)
+- [docs/README.md](./docs/README.md)
 
 ## 授權
 
