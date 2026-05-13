@@ -33,7 +33,10 @@ export function spawnNextPiece(state, deps = {}) {
     state.player.rotation = 0;
     state.player.pos.y = spawnY;
     state.player.pos.x = Math.floor(deps.COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
+    state.player.lastKickIndex = -1;
     state.canHold = true;
+    state.lastActionWasRotation = false;
+    state.lastKickIndex = -1;
 
     fillQueue(state, deps);
 
@@ -81,6 +84,10 @@ export function lockCurrentPiece(state, deps = {}) {
     const previousLevel = Number.isFinite(state.previousLevel) ? state.previousLevel : state.level;
     const beforeScore = state.score;
 
+    const tspin = (state.lastActionWasRotation && typeof deps.detectTspin === "function")
+        ? deps.detectTspin(state.arena, state.player, state.lastKickIndex)
+        : "none";
+
     deps.merge(state.arena, state.player);
     state.piecesPlaced += 1;
 
@@ -88,24 +95,43 @@ export function lockCurrentPiece(state, deps = {}) {
     const topOut = deps.hasTopOut(state.arena);
     state.garbageCells = deps.countGarbageCells(state.arena);
 
-    state.lastClear = clearedRows.length;
+    const linesCleared = clearedRows.length;
+    const perfectClear = linesCleared > 0
+        && typeof deps.isPerfectClear === "function"
+        && deps.isPerfectClear(state.arena);
+
+    state.lastClear = linesCleared;
     let isTetrisClear = false;
     let continuesB2b = false;
     let scoreAdded = 0;
 
-    const linesCleared = clearedRows.length;
+    const isB2bEligibleClear = (linesCleared === 4) || (tspin !== "none" && linesCleared > 0);
+    const priorB2bChain = state.b2bChain;
+
     if (linesCleared) {
         isTetrisClear = linesCleared === 4;
-        continuesB2b = isTetrisClear && state.b2bChain > 0;
+        continuesB2b = isB2bEligibleClear && priorB2bChain > 0;
         state.combo += 1;
         state.maxCombo = Math.max(state.maxCombo, state.combo);
-        state.b2bChain = isTetrisClear ? state.b2bChain + 1 : 0;
-        scoreAdded = deps.scoreClear(linesCleared, state.level, state.combo);
+        state.b2bChain = isB2bEligibleClear ? state.b2bChain + 1 : 0;
+        scoreAdded = deps.scoreClear(linesCleared, state.level, state.combo, {
+            tspin,
+            b2b: continuesB2b,
+            perfectClear,
+        });
         state.score += scoreAdded;
         state.lines += linesCleared;
         if (isTetrisClear) state.tetrisCount += 1;
-        state.zoneMeter = Math.min(100, state.zoneMeter + linesCleared * 12 + (isTetrisClear ? 12 : 0));
+        if (tspin !== "none") state.tspinCount = (state.tspinCount || 0) + 1;
+        if (perfectClear) state.perfectClearCount = (state.perfectClearCount || 0) + 1;
+        state.zoneMeter = Math.min(100, state.zoneMeter + linesCleared * 12 + (isTetrisClear ? 12 : 0) + (perfectClear ? 24 : 0));
         state.level = Math.floor(state.lines / 10) + 1;
+    } else if (tspin !== "none") {
+        // T-spin with no lines cleared: small bonus, keep B2B chain intact.
+        state.combo = -1;
+        scoreAdded = deps.scoreClear(0, state.level, -1, { tspin, b2b: false, perfectClear: false });
+        state.score += scoreAdded;
+        state.tspinCount = (state.tspinCount || 0) + 1;
     } else {
         state.combo = -1;
         state.lastClear = 0;
@@ -116,6 +142,8 @@ export function lockCurrentPiece(state, deps = {}) {
 
     state.lockCounter = 0;
     state.moveResetCount = 0;
+    state.lastActionWasRotation = false;
+    state.lastKickIndex = -1;
 
     return {
         action: "lock",
@@ -124,6 +152,8 @@ export function lockCurrentPiece(state, deps = {}) {
         levelUp,
         linesCleared,
         isTetrisClear,
+        tspin,
+        perfectClear,
         continuesB2b,
         scoreAdded,
         scoreBefore: beforeScore,
@@ -134,6 +164,8 @@ export function lockCurrentPiece(state, deps = {}) {
         b2bChain: state.b2bChain,
         maxCombo: state.maxCombo,
         tetrisCount: state.tetrisCount,
+        tspinCount: state.tspinCount || 0,
+        perfectClearCount: state.perfectClearCount || 0,
         clearRows: clearedRows,
         piecesPlaced: state.piecesPlaced,
         lines: state.lines,
@@ -157,6 +189,7 @@ function movePiece(state, deps, dir) {
         return { action: "move", direction: dir, moved: false, lockReset: false };
     }
 
+    state.lastActionWasRotation = false;
     resetLockDelay(state, deps);
     if (typeof deps.playTone === "function") deps.playTone(260, 0.025);
     return { action: "move", direction: dir, moved: true, lockReset: true };
@@ -165,6 +198,8 @@ function movePiece(state, deps, dir) {
 function rotatePiece(state, deps, dir) {
     const rotated = deps.rotateWithSrs(state.arena, state.player, dir);
     if (!rotated) return { action: "rotate", dir, rotated: false, lockReset: false };
+    state.lastActionWasRotation = true;
+    state.lastKickIndex = Number.isFinite(state.player.lastKickIndex) ? state.player.lastKickIndex : 0;
     resetLockDelay(state, deps);
     if (typeof deps.playTone === "function") deps.playTone(330, 0.035);
     return { action: "rotate", dir, rotated: true, lockReset: true };
@@ -188,6 +223,7 @@ function dropPiece(state, deps, isSoft = false) {
         };
     }
 
+    state.lastActionWasRotation = false;
     if (isSoft) state.score += 1;
     state.dropCounter = 0;
     return { action: "drop", soft: isSoft, blocked: false, dropped: true, lockStarted: false };
@@ -232,9 +268,12 @@ function holdPiece(state, deps) {
         state.player.type = state.holdPiece;
         state.player.matrix = deps.createPiece(state.player.type);
         state.player.rotation = 0;
+        state.player.lastKickIndex = -1;
         state.holdPiece = currentType;
         state.player.pos.y = Number.isFinite(deps.spawnY) ? deps.spawnY : 0;
         state.player.pos.x = Math.floor(deps.COLS / 2) - Math.floor(state.player.matrix[0].length / 2);
+        state.lastActionWasRotation = false;
+        state.lastKickIndex = -1;
 
         if (deps.collide(state.arena, state.player)) {
             return {

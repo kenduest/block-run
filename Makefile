@@ -8,7 +8,7 @@ GAME_ENTRY := $(GAME_DIR)/index.html
 SRC_JS := $(shell find $(GAME_DIR)/src -name '*.js')
 TESTS := $(wildcard tests/*.test.mjs)
 
-.PHONY: help serve dev url check test verify package pages-artifact clean
+.PHONY: help serve dev url check lint test verify package pages-artifact clean
 
 help:
 	@printf '%s\n' 'Block Run developer commands'
@@ -17,8 +17,9 @@ help:
 	@printf '%-12s %s\n' 'make dev' 'Alias for make serve'
 	@printf '%-12s %s\n' 'make url' 'Print the game entry URL'
 	@printf '%-12s %s\n' 'make check' 'Run Node syntax checks'
+	@printf '%-12s %s\n' 'make lint' 'Run minimal lint pass'
 	@printf '%-12s %s\n' 'make test' 'Run all test files'
-	@printf '%-12s %s\n' 'make verify' 'Run check and test'
+	@printf '%-12s %s\n' 'make verify' 'Run check, lint, and test'
 	@printf '%-12s %s\n' 'make package' 'Build a single-file standalone HTML in dist/'
 	@printf '%-12s %s\n' 'make pages-artifact' 'Build the GitHub Pages artifact in dist/pages'
 	@printf '%-12s %s\n' 'make clean' 'Remove local transient files'
@@ -42,13 +43,16 @@ check:
 		$(NODE) --check "$$file"; \
 	done
 
+lint:
+	@$(NODE) scripts/lint.mjs
+
 test:
 	@for file in $(TESTS); do \
 		printf 'test %s\n' "$$file"; \
 		$(NODE) "$$file"; \
 	done
 
-verify: check test
+verify: check lint test
 
 package:
 	@mkdir -p dist

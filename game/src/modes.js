@@ -1,14 +1,14 @@
 import { hashSeed } from "./rules.js?v=__APP_VERSION__";
 import { TEXT, joinText } from "./i18n.js?v=__APP_VERSION__";
 
-export const MODE_ORDER = ["marathon", "sprint", "ultra", "dig", "mystery", "zen", "daily", "stages", "training"];
+export const MODE_ORDER = ["marathon", "sprint", "sprint20", "sprint100", "ultra", "ultra120", "dig", "mystery", "zen", "daily", "stages", "training"];
 
 const STAGE_DEFS = [
     ["stage-1", 0, { type: "lines", target: 6 }, { pieceLimit: 42 }],
     ["stage-2", 1, { type: "score", target: 3000 }, { pieceLimit: 48, starGoals: { score: 5200, maxCombo: 2 } }],
     ["stage-3", 2, { type: "tetris", target: 1 }, { pieceLimit: 55, startingGarbage: 1 }],
     ["stage-4", 3, { type: "lines", target: 12 }, { timeLimitMs: 120000, startingGarbage: 2, speedEvents: [{ afterMs: 45000, multiplier: 0.72 }] }],
-    ["stage-5", 4, { type: "score", target: 7200 }, { timeLimitMs: 105000, startingGarbage: 3, speedEvents: [{ afterMs: 30000, multiplier: 0.78 }, { afterMs: 70000, multiplier: 0.58, repeat: true }] }],
+    ["stage-5", 4, { type: "score", target: 7200 }, { timeLimitMs: 105000, startingGarbage: 3, modifiers: { limitedPreview: 2 }, speedEvents: [{ afterMs: 30000, multiplier: 0.78 }, { afterMs: 70000, multiplier: 0.58, repeat: true }] }],
     ["stage-6", 5, { type: "lines", target: 16 }, { pieceLimit: 62, modifiers: { limitedPreview: 1 }, speedEvents: [{ afterMs: 25000, multiplier: 0.66 }] }],
     ["stage-7", 6, { type: "lines", target: 16 }, { pieceLimit: 58, startingGarbage: 5, garbagePattern: [4, 4, 5, 5] }],
     ["stage-8", 7, { type: "garbage", target: 54 }, { pieceLimit: 72, startingGarbage: 6, garbagePattern: [1, 8, 2, 7, 3, 6] }],
@@ -22,6 +22,7 @@ const STAGE_DEFS = [
     ["stage-16", 15, { type: "lines", target: 24 }, { timeLimitMs: 150000, startingGarbage: 5, garbagePattern: [2, 7], modifiers: { periodicGarbageMs: 22000 } }],
     ["stage-17", 16, { type: "score", target: 14000 }, { timeLimitMs: 150000, modifiers: { mystery: true, limitedPreview: 3 }, speedEvents: [{ afterMs: 50000, multiplier: 0.72 }] }],
     ["stage-18", 17, { type: "lines", target: 28 }, { pieceLimit: 78, startingGarbage: 8, garbagePattern: [4, 4, 5, 5], speedEvents: [{ afterMs: 35000, multiplier: 0.7 }, { afterMs: 95000, multiplier: 0.52, repeat: true }] }],
+    ["stage-19", 18, { type: "lines", target: 50 }, { startingGarbage: 10, garbagePattern: [2, 6, 3, 7, 4, 5], modifiers: { periodicGarbageMs: 18000, limitedPreview: 1 }, speedEvents: [{ afterMs: 20000, multiplier: 0.55 }, { afterMs: 60000, multiplier: 0.42, repeat: true }] }],
 ];
 
 const MODE_CONFIGS = {
@@ -39,11 +40,32 @@ const MODE_CONFIGS = {
         resultEvaluator: state => state.lines >= 40 ? "success" : state.gameOver ? "failed" : "playing",
         statsFields: ["time", "pps", "kpp"],
     },
+    sprint20: {
+        speedCurve: () => 720,
+        objectiveText: () => TEXT.modes.objectives.sprint20,
+        progress: state => progress(TEXT.modes.progress.sprint20, TEXT.modes.progress.lines20(state.lines), state.lines / 20),
+        resultEvaluator: state => state.lines >= 20 ? "success" : state.gameOver ? "failed" : "playing",
+        statsFields: ["time", "pps", "kpp"],
+    },
+    sprint100: {
+        speedCurve: () => 660,
+        objectiveText: () => TEXT.modes.objectives.sprint100,
+        progress: state => progress(TEXT.modes.progress.sprint100, TEXT.modes.progress.lines100(state.lines), state.lines / 100),
+        resultEvaluator: state => state.lines >= 100 ? "success" : state.gameOver ? "failed" : "playing",
+        statsFields: ["time", "pps", "kpp"],
+    },
     ultra: {
         speedCurve: (level, state) => Math.max(88, 820 - (level - 1) * 48 - zoneSlowdown(state)),
         objectiveText: () => TEXT.modes.objectives.ultra,
         progress: state => progress(TEXT.modes.progress.remainingTime, formatTime(Math.max(0, 180000 - state.elapsedMs)), state.elapsedMs / 180000),
         resultEvaluator: state => state.elapsedMs >= 180000 ? "success" : state.gameOver ? "failed" : "playing",
+        statsFields: ["score", "tetris", "combo"],
+    },
+    ultra120: {
+        speedCurve: (level, state) => Math.max(82, 780 - (level - 1) * 52 - zoneSlowdown(state)),
+        objectiveText: () => TEXT.modes.objectives.ultra120,
+        progress: state => progress(TEXT.modes.progress.remainingTime, formatTime(Math.max(0, 120000 - state.elapsedMs)), state.elapsedMs / 120000),
+        resultEvaluator: state => state.elapsedMs >= 120000 ? "success" : state.gameOver ? "failed" : "playing",
         statsFields: ["score", "tetris", "combo"],
     },
     dig: {

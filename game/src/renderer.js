@@ -1,16 +1,76 @@
 import { COLS, HIDDEN_ROWS, ROWS, createPiece } from "./rules.js?v=__APP_VERSION__";
 
-const PALETTE = [
-    null,
-    { base: "#22d3ee", light: "#a7f3ff", deep: "#0891b2", glow: "rgba(34, 211, 238, 0.45)" },
-    { base: "#fb923c", light: "#fed7aa", deep: "#c2410c", glow: "rgba(251, 146, 60, 0.40)" },
-    { base: "#60a5fa", light: "#bfdbfe", deep: "#1d4ed8", glow: "rgba(96, 165, 250, 0.42)" },
-    { base: "#facc15", light: "#fef3c7", deep: "#ca8a04", glow: "rgba(250, 204, 21, 0.40)" },
-    { base: "#f87171", light: "#fecaca", deep: "#dc2626", glow: "rgba(248, 113, 113, 0.42)" },
-    { base: "#4ade80", light: "#bbf7d0", deep: "#16a34a", glow: "rgba(74, 222, 128, 0.40)" },
-    { base: "#c084fc", light: "#e9d5ff", deep: "#7e22ce", glow: "rgba(192, 132, 252, 0.42)" },
-    { base: "#667085", light: "#98a2b3", deep: "#344054", glow: "rgba(152, 162, 179, 0.22)" },
-];
+const PALETTES = {
+    off: [
+        null,
+        { base: "#22d3ee", light: "#a7f3ff", deep: "#0891b2", glow: "rgba(34, 211, 238, 0.45)" },
+        { base: "#fb923c", light: "#fed7aa", deep: "#c2410c", glow: "rgba(251, 146, 60, 0.40)" },
+        { base: "#60a5fa", light: "#bfdbfe", deep: "#1d4ed8", glow: "rgba(96, 165, 250, 0.42)" },
+        { base: "#facc15", light: "#fef3c7", deep: "#ca8a04", glow: "rgba(250, 204, 21, 0.40)" },
+        { base: "#f87171", light: "#fecaca", deep: "#dc2626", glow: "rgba(248, 113, 113, 0.42)" },
+        { base: "#4ade80", light: "#bbf7d0", deep: "#16a34a", glow: "rgba(74, 222, 128, 0.40)" },
+        { base: "#c084fc", light: "#e9d5ff", deep: "#7e22ce", glow: "rgba(192, 132, 252, 0.42)" },
+        { base: "#667085", light: "#98a2b3", deep: "#344054", glow: "rgba(152, 162, 179, 0.22)" },
+    ],
+    // Deuteranopia (red-green): keep blue/yellow/orange spectrum, avoid pure green/red.
+    deutan: [
+        null,
+        { base: "#2dd4ff", light: "#bce6ff", deep: "#0277a8", glow: "rgba(45, 212, 255, 0.45)" },
+        { base: "#f59e0b", light: "#fed7aa", deep: "#92400e", glow: "rgba(245, 158, 11, 0.45)" },
+        { base: "#3b82f6", light: "#bfdbfe", deep: "#1e3a8a", glow: "rgba(59, 130, 246, 0.45)" },
+        { base: "#facc15", light: "#fef3c7", deep: "#854d0e", glow: "rgba(250, 204, 21, 0.45)" },
+        { base: "#e879f9", light: "#f5d0fe", deep: "#86198f", glow: "rgba(232, 121, 249, 0.45)" },
+        { base: "#cbd5e1", light: "#f1f5f9", deep: "#475569", glow: "rgba(203, 213, 225, 0.4)" },
+        { base: "#f97316", light: "#fed7aa", deep: "#9a3412", glow: "rgba(249, 115, 22, 0.5)" },
+        { base: "#667085", light: "#98a2b3", deep: "#344054", glow: "rgba(152, 162, 179, 0.22)" },
+    ],
+    // Protanopia (red weakness): boost yellow/blue contrast, soften reds.
+    protan: [
+        null,
+        { base: "#06b6d4", light: "#a7f3ff", deep: "#0e7490", glow: "rgba(6, 182, 212, 0.45)" },
+        { base: "#fcd34d", light: "#fef3c7", deep: "#a16207", glow: "rgba(252, 211, 77, 0.45)" },
+        { base: "#1d4ed8", light: "#93c5fd", deep: "#1e3a8a", glow: "rgba(29, 78, 216, 0.45)" },
+        { base: "#fde047", light: "#fef9c3", deep: "#854d0e", glow: "rgba(253, 224, 71, 0.45)" },
+        { base: "#a78bfa", light: "#e9d5ff", deep: "#6d28d9", glow: "rgba(167, 139, 250, 0.45)" },
+        { base: "#94a3b8", light: "#e2e8f0", deep: "#475569", glow: "rgba(148, 163, 184, 0.4)" },
+        { base: "#fb923c", light: "#fed7aa", deep: "#9a3412", glow: "rgba(251, 146, 60, 0.5)" },
+        { base: "#667085", light: "#98a2b3", deep: "#344054", glow: "rgba(152, 162, 179, 0.22)" },
+    ],
+    // Tritanopia (blue-yellow weakness): keep red/cyan separation, avoid blue/yellow conflicts.
+    tritan: [
+        null,
+        { base: "#22d3ee", light: "#a7f3ff", deep: "#0891b2", glow: "rgba(34, 211, 238, 0.45)" },
+        { base: "#fb7185", light: "#fecdd3", deep: "#9f1239", glow: "rgba(251, 113, 133, 0.45)" },
+        { base: "#a855f7", light: "#e9d5ff", deep: "#6b21a8", glow: "rgba(168, 85, 247, 0.45)" },
+        { base: "#fef08a", light: "#fef9c3", deep: "#854d0e", glow: "rgba(254, 240, 138, 0.4)" },
+        { base: "#dc2626", light: "#fecaca", deep: "#7f1d1d", glow: "rgba(220, 38, 38, 0.5)" },
+        { base: "#10b981", light: "#bbf7d0", deep: "#065f46", glow: "rgba(16, 185, 129, 0.45)" },
+        { base: "#f472b6", light: "#fbcfe8", deep: "#9d174d", glow: "rgba(244, 114, 182, 0.45)" },
+        { base: "#667085", light: "#98a2b3", deep: "#344054", glow: "rgba(152, 162, 179, 0.22)" },
+    ],
+};
+
+const LINE_BURST_COLORS = {
+    clear: ["#24d98f", "#38bdf8"],
+    tetris: ["#fde047", "#fbbf24", "#fb923c"],
+    tspin: ["#c084fc", "#e879f9", "#f9a8d4"],
+    perfect: ["#fef9c3", "#fde68a", "#a7f3d0", "#bae6fd"],
+};
+
+const CENTER_BURST_SETTINGS = {
+    clear: { count: 36, color: "#24d98f", minSpeed: 0.04, maxSpeed: 0.16, life: 520 },
+    tetris: { count: 72, color: "#fbbf24", minSpeed: 0.05, maxSpeed: 0.22, life: 620 },
+    tspin: { count: 60, color: "#d8b4fe", minSpeed: 0.05, maxSpeed: 0.2, life: 600 },
+    perfect: { count: 96, color: "#fef9c3", minSpeed: 0.06, maxSpeed: 0.26, life: 720 },
+    level: { count: 36, color: "#facc15", minSpeed: 0.04, maxSpeed: 0.16, life: 520 },
+    gameover: { count: 56, color: "#fb7185", minSpeed: 0.04, maxSpeed: 0.18, life: 520 },
+};
+
+let PALETTE = PALETTES.off;
+
+function selectPalette(mode) {
+    return PALETTES[mode] || PALETTES.off;
+}
 
 export class Renderer {
     constructor(boardCanvas, nextCanvas, holdCanvas) {
@@ -25,32 +85,97 @@ export class Renderer {
         this.previewCellSize = 28;
         this.skin = "premium";
         this.effectsLevel = "normal";
+        this.colorBlindMode = "off";
+        this.ghostDangerPulse = true;
+        this.dangerPulse = false;
+        this.boardFlashUntil = 0;
+        this.cachedBoardGradient = null;
+        this.cachedBoardGradientSize = null;
+        this.cellGradientCache = new Map();
     }
 
     configure(settings) {
         this.skin = settings.skin;
         this.effectsLevel = settings.effectsLevel;
+        const nextColorMode = settings.colorBlindMode || "off";
+        if (nextColorMode !== this.colorBlindMode) {
+            this.colorBlindMode = nextColorMode;
+            PALETTE = selectPalette(nextColorMode);
+            this.cellGradientCache.clear();
+        }
+        this.ghostDangerPulse = settings.ghostDangerPulse !== false;
     }
 
     resize() {
         this.cellSize = setupCanvas(this.boardCanvas, this.ctx, COLS, ROWS);
         this.previewCellSize = setupCanvas(this.nextCanvas, this.nextCtx, 4, 12);
         setupCanvas(this.holdCanvas, this.holdCtx, 4, 4);
+        this.cachedBoardGradient = null;
+        this.cellGradientCache.clear();
     }
 
     render(state, ghostPos) {
         this.configure(state.settings);
-        drawBoardBackground(this.ctx);
+        const visibleTop = state.player.matrix ? state.player.pos.y - HIDDEN_ROWS : Infinity;
+        this.dangerPulse = this.ghostDangerPulse && visibleTop <= 2;
+        this.drawBoardBackground();
         drawGrid(this.ctx);
-        drawMatrix(this.ctx, state.arena, { x: 0, y: -HIDDEN_ROWS }, this.cellSize, this.skin);
+        drawMatrix(this.ctx, state.arena, { x: 0, y: -HIDDEN_ROWS }, this.cellSize, this.skin, this);
         if (state.player.matrix && state.settings.ghostEnabled && ghostPos) {
-            drawGhostMatrix(this.ctx, state.player.matrix, { x: ghostPos.x, y: ghostPos.y - HIDDEN_ROWS }, this.cellSize);
+            drawGhostMatrix(this.ctx, state.player.matrix, { x: ghostPos.x, y: ghostPos.y - HIDDEN_ROWS }, this.cellSize, this.dangerPulse);
         }
         if (state.player.matrix) {
-            drawMatrix(this.ctx, state.player.matrix, { x: state.player.pos.x, y: state.player.pos.y - HIDDEN_ROWS }, this.cellSize, this.skin);
+            drawMatrix(this.ctx, state.player.matrix, { x: state.player.pos.x, y: state.player.pos.y - HIDDEN_ROWS }, this.cellSize, this.skin, this);
         }
         if (state.hiddenBlocksActive) drawHiddenOverlay(this.ctx);
+        this.drawBoardFlash();
         this.renderParticles();
+    }
+
+    drawBoardBackground() {
+        const ctx = this.ctx;
+        if (!this.cachedBoardGradient) {
+            const gradient = ctx.createLinearGradient(0, 0, COLS, ROWS);
+            gradient.addColorStop(0, "#0c1222");
+            gradient.addColorStop(0.55, "#040817");
+            gradient.addColorStop(1, "#02030a");
+            this.cachedBoardGradient = gradient;
+        }
+        ctx.fillStyle = this.cachedBoardGradient;
+        ctx.fillRect(0, 0, COLS, ROWS);
+    }
+
+    drawBoardFlash() {
+        const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        if (now < this.boardFlashUntil) {
+            const remaining = (this.boardFlashUntil - now) / 600;
+            const alpha = Math.max(0, Math.min(0.55, remaining * 0.55));
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+            this.ctx.fillStyle = "#fef9c3";
+            this.ctx.fillRect(0, 0, COLS, ROWS);
+            this.ctx.restore();
+        }
+    }
+
+    getCellGradients(value) {
+        const key = `${this.skin}:${value}:${this.colorBlindMode}`;
+        let entry = this.cellGradientCache.get(key);
+        if (entry) return entry;
+        const style = PALETTE[value] || PALETTE[8];
+        const ctx = this.ctx;
+        const outer = ctx.createLinearGradient(0, 0, 1, 1);
+        outer.addColorStop(0, style.light);
+        outer.addColorStop(0.2, style.base);
+        outer.addColorStop(0.78, style.base);
+        outer.addColorStop(1, style.deep);
+        const shine = ctx.createRadialGradient(0.32, 0.2, 0.04, 0.6, 0.64, 0.72);
+        shine.addColorStop(0, "rgba(255, 255, 255, 0.62)");
+        shine.addColorStop(0.34, "rgba(255, 255, 255, 0.12)");
+        shine.addColorStop(1, "rgba(0, 0, 0, 0.28)");
+        entry = { style, outer, shine };
+        this.cellGradientCache.set(key, entry);
+        return entry;
     }
 
     renderPreviews(nextTypes, holdType, count = 3) {
@@ -58,11 +183,12 @@ export class Renderer {
         drawPreview(this.holdCtx, holdType, this.previewCellSize, this.skin);
     }
 
-    burstLine(y, count = 18) {
+    burstLine(y, count = 18, kind = "clear") {
         if (this.effectsLevel === "off") return;
         const visibleY = y - HIDDEN_ROWS;
         if (visibleY < 0 || visibleY >= ROWS) return;
         const multiplier = { low: 0.55, normal: 1, high: 1.55 }[this.effectsLevel] || 1;
+        const palette = LINE_BURST_COLORS[kind] || LINE_BURST_COLORS.clear;
         for (let i = 0; i < count * multiplier; i++) {
             this.particles.push({
                 x: Math.random() * COLS,
@@ -71,24 +197,26 @@ export class Renderer {
                 vy: -Math.random() * 0.09 - 0.025,
                 life: 420 + Math.random() * 280,
                 age: 0,
-                color: Math.random() > 0.5 ? "#24d98f" : "#38bdf8",
+                color: palette[Math.floor(Math.random() * palette.length)],
             });
         }
     }
 
     burstCenter(kind = "clear") {
         if (this.effectsLevel === "off") return;
-        const count = kind === "tetris" ? 72 : kind === "gameover" ? 56 : 36;
-        const color = kind === "gameover" ? "#fb7185" : kind === "level" ? "#facc15" : "#24d98f";
+        const settings = CENTER_BURST_SETTINGS[kind] || CENTER_BURST_SETTINGS.clear;
+        const count = settings.count;
+        const color = settings.color;
+        if (kind === "perfect") this.boardFlashUntil = (performance?.now?.() || Date.now()) + 600;
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 0.12 + 0.04;
+            const speed = Math.random() * (settings.maxSpeed - settings.minSpeed) + settings.minSpeed;
             this.particles.push({
                 x: COLS / 2,
                 y: ROWS / 2,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                life: 520 + Math.random() * 360,
+                life: settings.life + Math.random() * 360,
                 age: 0,
                 color,
             });
@@ -136,15 +264,6 @@ function setupCanvas(canvas, ctx, logicalWidth, logicalHeight) {
     return pixelWidth / logicalWidth;
 }
 
-function drawBoardBackground(ctx) {
-    const gradient = ctx.createLinearGradient(0, 0, COLS, ROWS);
-    gradient.addColorStop(0, "#0c1222");
-    gradient.addColorStop(0.55, "#040817");
-    gradient.addColorStop(1, "#02030a");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, COLS, ROWS);
-}
-
 function drawGrid(ctx) {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
     ctx.lineWidth = 0.024;
@@ -186,15 +305,17 @@ function drawNextQueue(ctx, types, pxSize, skin, count) {
     });
 }
 
-function drawMatrix(ctx, matrix, offset, pxSize, skin) {
-    matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) drawCell(ctx, x + offset.x, y + offset.y, value, pxSize, skin);
-        });
-    });
+function drawMatrix(ctx, matrix, offset, pxSize, skin, renderer = null) {
+    for (let y = 0; y < matrix.length; y++) {
+        const row = matrix[y];
+        for (let x = 0; x < row.length; x++) {
+            const value = row[x];
+            if (value !== 0) drawCell(ctx, x + offset.x, y + offset.y, value, pxSize, skin, renderer);
+        }
+    }
 }
 
-function drawCell(ctx, x, y, value, pxSize, skin) {
+function drawCell(ctx, x, y, value, pxSize, skin, renderer = null) {
     const style = PALETTE[value] || PALETTE[8];
     if (skin === "classic") return drawClassicCell(ctx, x, y, style, pxSize);
     if (skin === "flat") return drawFlatCell(ctx, x, y, style, pxSize);
@@ -202,36 +323,46 @@ function drawCell(ctx, x, y, value, pxSize, skin) {
     const inset = Math.max(0.045, 1.3 / pxSize);
     const radius = Math.max(0.08, 3.6 / pxSize);
     ctx.save();
+    ctx.translate(x, y);
     ctx.shadowColor = "rgba(0, 0, 0, 0.48)";
     ctx.shadowBlur = 0.18;
     ctx.shadowOffsetY = 0.055;
     ctx.fillStyle = "rgba(0, 0, 0, 0.74)";
-    roundedRect(ctx, x + inset * 0.7, y + inset, 1 - inset * 1.4, 1 - inset * 1.4, radius);
+    roundedRect(ctx, inset * 0.7, inset, 1 - inset * 1.4, 1 - inset * 1.4, radius);
     ctx.fill();
 
     ctx.shadowColor = style.glow;
     ctx.shadowBlur = 0.22;
-    const outer = ctx.createLinearGradient(x, y, x + 1, y + 1);
-    outer.addColorStop(0, style.light);
-    outer.addColorStop(0.2, style.base);
-    outer.addColorStop(0.78, style.base);
-    outer.addColorStop(1, style.deep);
-    ctx.fillStyle = outer;
-    roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, radius);
+    const cache = renderer ? renderer.getCellGradients(value) : null;
+    if (cache) {
+        ctx.fillStyle = cache.outer;
+    } else {
+        const outer = ctx.createLinearGradient(0, 0, 1, 1);
+        outer.addColorStop(0, style.light);
+        outer.addColorStop(0.2, style.base);
+        outer.addColorStop(0.78, style.base);
+        outer.addColorStop(1, style.deep);
+        ctx.fillStyle = outer;
+    }
+    roundedRect(ctx, inset, inset, 1 - inset * 2, 1 - inset * 2, radius);
     ctx.fill();
 
     ctx.shadowColor = "transparent";
-    const shine = ctx.createRadialGradient(x + 0.32, y + 0.2, 0.04, x + 0.6, y + 0.64, 0.72);
-    shine.addColorStop(0, "rgba(255, 255, 255, 0.62)");
-    shine.addColorStop(0.34, "rgba(255, 255, 255, 0.12)");
-    shine.addColorStop(1, "rgba(0, 0, 0, 0.28)");
-    ctx.fillStyle = shine;
-    roundedRect(ctx, x + inset * 2.2, y + inset * 2.2, 1 - inset * 4.4, 1 - inset * 4.4, radius * 0.72);
+    if (cache) {
+        ctx.fillStyle = cache.shine;
+    } else {
+        const shine = ctx.createRadialGradient(0.32, 0.2, 0.04, 0.6, 0.64, 0.72);
+        shine.addColorStop(0, "rgba(255, 255, 255, 0.62)");
+        shine.addColorStop(0.34, "rgba(255, 255, 255, 0.12)");
+        shine.addColorStop(1, "rgba(0, 0, 0, 0.28)");
+        ctx.fillStyle = shine;
+    }
+    roundedRect(ctx, inset * 2.2, inset * 2.2, 1 - inset * 4.4, 1 - inset * 4.4, radius * 0.72);
     ctx.fill();
 
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
     ctx.lineWidth = Math.max(0.02, 1 / pxSize);
-    roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, radius);
+    roundedRect(ctx, inset, inset, 1 - inset * 2, 1 - inset * 2, radius);
     ctx.stroke();
     ctx.restore();
 }
@@ -260,26 +391,30 @@ function drawClassicCell(ctx, x, y, style, pxSize) {
     ctx.restore();
 }
 
-function drawGhostMatrix(ctx, matrix, offset, pxSize) {
+function drawGhostMatrix(ctx, matrix, offset, pxSize, dangerPulse = false) {
     ctx.save();
+    const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    const pulse = dangerPulse ? 0.5 + 0.5 * Math.sin(now / 240) : 0;
+    const strokeAlpha = dangerPulse ? 0.85 + pulse * 0.1 : 0.85;
+    const strokeColor = dangerPulse ? "#fb7185" : null;
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
-            if (value !== 0) drawGhostCell(ctx, x + offset.x, y + offset.y, value, pxSize);
+            if (value !== 0) drawGhostCell(ctx, x + offset.x, y + offset.y, value, pxSize, strokeAlpha, strokeColor);
         });
     });
     ctx.restore();
 }
 
-function drawGhostCell(ctx, x, y, value, pxSize) {
+function drawGhostCell(ctx, x, y, value, pxSize, strokeAlpha = 0.85, strokeColor = null) {
     const style = PALETTE[value] || PALETTE[1];
     const inset = Math.max(0.14, 4 / pxSize);
     ctx.globalAlpha = 0.55;
     ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
     roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, 0.08);
     ctx.fill();
-    ctx.strokeStyle = style.base;
-    ctx.globalAlpha = 0.7;
-    ctx.lineWidth = Math.max(0.032, 1.6 / pxSize);
+    ctx.strokeStyle = strokeColor || style.base;
+    ctx.globalAlpha = strokeAlpha;
+    ctx.lineWidth = Math.max(0.036, 1.8 / pxSize);
     ctx.setLineDash([0.14, 0.12]);
     roundedRect(ctx, x + inset, y + inset, 1 - inset * 2, 1 - inset * 2, 0.08);
     ctx.stroke();

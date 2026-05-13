@@ -28,7 +28,7 @@ saveData(data);
 assert.equal(store.has("block-run-state-v2"), true);
 data = loadData();
 assert.equal(data.settings.nextPreviewCount, 3);
-assert.equal(data.settings.dasMs, 125);
+assert.equal(data.settings.dasMs, DEFAULT_SETTINGS.dasMs);
 assert.equal(data.settings.soundVolume, DEFAULT_SETTINGS.soundVolume);
 
 store.set("block-run-state-v2", JSON.stringify({

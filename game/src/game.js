@@ -24,7 +24,7 @@ import {
     stageGoalSummary,
     todayKey,
 } from "./modes.js?v=__APP_VERSION__";
-import { loadData, markStageComplete, recordGame, resetRecords, saveData, updateBestScore, DEFAULT_SETTINGS } from "./storage.js?v=__APP_VERSION__";
+import { loadData, markStageComplete, readUiPreference, recordGame, resetRecords, saveData, updateBestScore, writeUiPreference, DEFAULT_SETTINGS } from "./storage.js?v=__APP_VERSION__";
 import {
     COLS,
     ARENA_ROWS,
@@ -34,9 +34,11 @@ import {
     createMatrix,
     createPiece,
     createRng,
+    detectTspin,
     hashSeed,
     getGhostPosition,
     hasTopOut,
+    isPerfectClear,
     makeGarbage,
     merge,
     pullFromBag,
@@ -128,6 +130,9 @@ const elements = {
     effectsSetting: document.getElementById("effectsSetting"),
     skinSetting: document.getElementById("skinSetting"),
     hintsSetting: document.getElementById("hintsSetting"),
+    colorBlindSetting: document.getElementById("colorBlindSetting"),
+    hapticSetting: document.getElementById("hapticSetting"),
+    ghostDangerSetting: document.getElementById("ghostDangerSetting"),
     soundVolumeValue: document.getElementById("soundVolumeValue"),
 };
 
@@ -348,7 +353,10 @@ function bindEvents() {
         }
         if (key === "arrowleft") pressHorizontal("left");
         if (key === "arrowright") pressHorizontal("right");
-        if (key === "arrowdown") keyState.down = true;
+        if (key === "arrowdown") {
+            if (!keyState.down) keyState.downSince = performanceNow();
+            keyState.down = true;
+        }
         if (key === "arrowup" || key === "x") action("rotate");
         if (key === "z") action("rotateReverse");
         if (key === " ") action("drop");
@@ -372,7 +380,10 @@ function bindEvents() {
         const key = event.key.toLowerCase();
         if (key === "arrowleft") releaseHorizontal("left");
         if (key === "arrowright") releaseHorizontal("right");
-        if (key === "arrowdown") keyState.down = false;
+        if (key === "arrowdown") {
+            keyState.down = false;
+            keyState.downSince = 0;
+        }
     });
 
     document.querySelectorAll("[data-command]").forEach(button => {
@@ -497,6 +508,7 @@ function startTouchAction(actionName, button) {
         return;
     }
     if (actionName === "down") {
+        if (!keyState.down) keyState.downSince = performanceNow();
         keyState.down = true;
         action("down");
     }
@@ -508,7 +520,14 @@ function stopTouchAction(actionName, button) {
         releaseHorizontal(actionName);
         return;
     }
-    if (actionName === "down") keyState.down = false;
+    if (actionName === "down") {
+        keyState.down = false;
+        keyState.downSince = 0;
+    }
+}
+
+function performanceNow() {
+    return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
 }
 
 function command(commandName) {
@@ -663,6 +682,8 @@ function executeCoreAction(actionName, options = {}) {
 
     if (options.source === "repeat") logInput(actionName);
 
+    if (options.source !== "repeat" && options.source !== "demo") triggerHaptic(actionName, actionResult);
+
     if (actionResult.action === "hardDrop" && actionResult.lockResult) {
         const lockResult = actionResult.lockResult;
         handleLockVisuals(lockResult);
@@ -710,13 +731,18 @@ function executeLockAndSpawn() {
 
 function handleLockVisuals(lockResult) {
     const clearRows = lockResult.clearRows || [];
+    const tspin = lockResult.tspin || "none";
+    const perfectClear = Boolean(lockResult.perfectClear);
     if (lockResult.linesCleared) {
         const isTetrisClear = lockResult.isTetrisClear;
         state.piecesPlaced = lockResult.piecesPlaced || state.piecesPlaced;
+        const lineBurst = perfectClear ? 36 : isTetrisClear ? 26 : tspin !== "none" ? 22 : 16;
         for (const y of clearRows) {
-            renderer.burstLine(y, isTetrisClear ? 26 : 16);
+            renderer.burstLine(y, lineBurst, lineBurstKind(lockResult));
         }
-        if (isTetrisClear) renderer.burstCenter("tetris");
+        if (perfectClear) renderer.burstCenter("perfect");
+        else if (tspin !== "none") renderer.burstCenter("tspin");
+        else if (isTetrisClear) renderer.burstCenter("tetris");
         refreshComboBanner();
         elements.combo.classList.remove("animate");
         void elements.combo.offsetWidth;
@@ -725,14 +751,19 @@ function handleLockVisuals(lockResult) {
         const detailParts = [];
         if (lockResult.combo > 0) detailParts.push(TEXT.game.combo(lockResult.combo + 1));
         if (lockResult.continuesB2b) detailParts.push(backToBackText());
-        showBoardFeedback(
-            isTetrisClear && TEXT.game.tetris ? TEXT.game.tetris : TEXT.game.lineClear(lockResult.linesCleared),
-            joinText(detailParts),
-            isTetrisClear || lockResult.combo >= 3 ? "big" : "combo",
-            isTetrisClear ? 1500 : 1100,
-        );
-        if (lockResult.combo >= 3) pulseBoardShake();
+        const headline = pickClearHeadline({
+            linesCleared: lockResult.linesCleared,
+            isTetrisClear,
+            tspin,
+            perfectClear,
+        });
+        const tone = perfectClear ? "big" : (tspin !== "none" || isTetrisClear || lockResult.combo >= 3) ? "big" : "combo";
+        const duration = perfectClear ? 1700 : isTetrisClear || tspin !== "none" ? 1500 : 1100;
+        showBoardFeedback(headline, joinText(detailParts), tone, duration);
+        if (lockResult.combo >= 3 || perfectClear) pulseBoardShake();
         playLineClearSound(lockResult.linesCleared, lockResult.combo);
+    } else if (tspin !== "none") {
+        showBoardFeedback(tspinLabel(tspin, 0), "", "big", 900);
     } else {
         elements.combo.textContent = "";
     }
@@ -742,6 +773,28 @@ function handleLockVisuals(lockResult) {
         showBoardFeedback(TEXT.game.levelUp || "LEVEL UP!", `${TEXT.hud.level} ${lockResult.levelAfter}`, "level", 1400);
         playTone(620, 0.12);
     }
+}
+
+function lineBurstKind(lockResult) {
+    if (lockResult.perfectClear) return "perfect";
+    if (lockResult.tspin && lockResult.tspin !== "none") return "tspin";
+    if (lockResult.isTetrisClear) return "tetris";
+    return "clear";
+}
+
+function pickClearHeadline({ linesCleared, isTetrisClear, tspin, perfectClear }) {
+    if (perfectClear && typeof TEXT.game.perfectClear === "function") return TEXT.game.perfectClear(linesCleared);
+    if (perfectClear) return TEXT.game.perfectClearLabel || "PERFECT CLEAR";
+    if (tspin === "full" && typeof TEXT.game.tspin === "function") return TEXT.game.tspin(linesCleared);
+    if (tspin === "mini" && typeof TEXT.game.tspinMini === "function") return TEXT.game.tspinMini(linesCleared);
+    if (isTetrisClear && TEXT.game.tetris) return TEXT.game.tetris;
+    return TEXT.game.lineClear(linesCleared);
+}
+
+function tspinLabel(kind, linesCleared) {
+    if (kind === "mini" && typeof TEXT.game.tspinMini === "function") return TEXT.game.tspinMini(linesCleared);
+    if (typeof TEXT.game.tspin === "function") return TEXT.game.tspin(linesCleared);
+    return "T-SPIN";
 }
 
 function gameplayActionDeps() {
@@ -757,6 +810,8 @@ function gameplayActionDeps() {
         countGarbageCells,
         hasTopOut,
         scoreClear,
+        detectTspin,
+        isPerfectClear,
         createMatrix,
         snapshotArena,
         renderPreviews: (nextQueue, holdPiece, previewCountValue) => {
@@ -768,6 +823,27 @@ function gameplayActionDeps() {
         previewCount,
         lastSnapshot: () => state.lastSnapshot,
     };
+}
+
+const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)")
+    : null;
+
+function triggerHaptic(actionName, actionResult) {
+    if (!state.settings?.hapticEnabled) return;
+    if (REDUCED_MOTION?.matches) return;
+    if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+    let pattern = 0;
+    if (actionName === "drop" && actionResult?.action === "hardDrop") pattern = 10;
+    else if (actionName === "rotate" || actionName === "rotateReverse") {
+        if (actionResult?.rotated) pattern = 6;
+    } else if (actionName === "hold" && actionResult?.held) pattern = 8;
+    else if (actionName === "left" || actionName === "right") {
+        if (actionResult?.moved) pattern = 3;
+    }
+    if (pattern > 0) {
+        try { navigator.vibrate(pattern); } catch { /* ignore */ }
+    }
 }
 
 function pauseGame() {
@@ -883,6 +959,9 @@ function bindSettingControls() {
     elements.effectsSetting.addEventListener("change", () => updateSetting("effectsLevel", elements.effectsSetting.value));
     elements.skinSetting.addEventListener("change", () => updateSetting("skin", elements.skinSetting.value));
     elements.hintsSetting.addEventListener("change", () => updateSetting("showHints", elements.hintsSetting.checked));
+    if (elements.colorBlindSetting) elements.colorBlindSetting.addEventListener("change", () => updateSetting("colorBlindMode", elements.colorBlindSetting.value));
+    if (elements.hapticSetting) elements.hapticSetting.addEventListener("change", () => updateSetting("hapticEnabled", elements.hapticSetting.checked));
+    if (elements.ghostDangerSetting) elements.ghostDangerSetting.addEventListener("change", () => updateSetting("ghostDangerPulse", elements.ghostDangerSetting.checked));
 }
 
 function evaluateResult() {
@@ -1142,10 +1221,28 @@ function update(time = 0) {
     }
 
     renderer.tickParticles(deltaTime);
-    const ghostPos = state.player.matrix ? getGhostPosition(state.arena, state.player) : null;
+    const ghostPos = state.player.matrix ? memoizedGhostPosition() : null;
     renderer.render(state, ghostPos);
+    refreshSoftDropIndicator();
     updateLiveHud();
     requestAnimationFrame(update);
+}
+
+let ghostCache = null;
+function memoizedGhostPosition() {
+    const key = `${state.piecesPlaced}|${state.player.pos.x}|${state.player.pos.y}|${state.player.rotation}|${state.player.type}`;
+    if (ghostCache && ghostCache.key === key) return ghostCache.value;
+    const value = getGhostPosition(state.arena, state.player);
+    ghostCache = { key, value };
+    return value;
+}
+
+function refreshSoftDropIndicator() {
+    const active = keyState.down
+        && keyState.downSince
+        && (performanceNow() - keyState.downSince) >= 200
+        && state.screen === "playing";
+    document.body.classList.toggle("soft-drop-active", Boolean(active));
 }
 
 function updateLiveHud() {
@@ -1487,25 +1584,6 @@ function currentSoundVolume() {
     const normalized = Number(state.settings.soundVolume);
     if (Number.isFinite(normalized)) return Math.max(0, Math.min(1, normalized));
     return 0.8;
-}
-
-function readUiPreference(key, fallback) {
-    try {
-        const raw = window.localStorage.getItem(key);
-        if (raw === null) return fallback;
-        if (raw === "1") return true;
-        if (raw === "0") return false;
-        if (raw === "true") return true;
-        if (raw === "false") return false;
-    } catch {
-    }
-    return fallback;
-}
-
-function writeUiPreference(key, value) {
-    try {
-        window.localStorage.setItem(key, value ? "1" : "0");
-    } catch {}
 }
 
 function isActionDebounced(actionName) {

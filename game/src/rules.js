@@ -121,7 +121,10 @@ const I_KICKS = {
 };
 
 export function rotateWithSrs(arena, player, dir) {
-    if (player.type === "O") return true;
+    if (player.type === "O") {
+        player.lastKickIndex = 0;
+        return true;
+    }
     const from = player.rotation || 0;
     const to = (from + (dir > 0 ? 1 : 3)) % 4;
     const originalX = player.pos.x;
@@ -129,11 +132,13 @@ export function rotateWithSrs(arena, player, dir) {
     rotate(player.matrix, dir);
 
     const kicks = getKickTests(player.type, from, to);
-    for (const [x, y] of kicks) {
+    for (let i = 0; i < kicks.length; i++) {
+        const [x, y] = kicks[i];
         player.pos.x = originalX + x;
         player.pos.y = originalY - y;
         if (!collide(arena, player)) {
             player.rotation = to;
+            player.lastKickIndex = i;
             return true;
         }
     }
@@ -141,6 +146,7 @@ export function rotateWithSrs(arena, player, dir) {
     rotate(player.matrix, -dir);
     player.pos.x = originalX;
     player.pos.y = originalY;
+    player.lastKickIndex = -1;
     return false;
 }
 
@@ -184,9 +190,68 @@ export function makeGarbage(arena, rows, options = {}) {
     }
 }
 
-export function scoreClear(cleared, level, combo) {
-    const base = [0, 100, 300, 500, 800][cleared] || 0;
-    return base * level + Math.max(0, combo) * 50;
+const BASE_CLEAR_POINTS = [0, 100, 300, 500, 800];
+const TSPIN_FULL_POINTS = [400, 800, 1200, 1600];
+const TSPIN_MINI_POINTS = [100, 200, 400, 0];
+const PERFECT_CLEAR_BONUS = [0, 800, 1200, 1800, 2000];
+
+export function scoreClear(cleared, level, combo, opts = {}) {
+    const tspin = opts.tspin || "none";
+    const b2b = Boolean(opts.b2b);
+    const perfectClear = Boolean(opts.perfectClear);
+    let base = 0;
+    if (tspin === "full") base = TSPIN_FULL_POINTS[cleared] || 0;
+    else if (tspin === "mini") base = TSPIN_MINI_POINTS[cleared] || 0;
+    else base = BASE_CLEAR_POINTS[cleared] || 0;
+    if (b2b && base > 0 && (tspin !== "none" || cleared === 4)) {
+        base = Math.floor(base * 1.5);
+    }
+    let total = base * level + Math.max(0, combo) * 50;
+    if (perfectClear && cleared > 0) {
+        total += (PERFECT_CLEAR_BONUS[cleared] || 0) * level;
+    }
+    return total;
+}
+
+const T_FRONT_CORNERS = {
+    0: [0, 1],
+    1: [1, 3],
+    2: [2, 3],
+    3: [0, 2],
+};
+
+export function detectTspin(arena, player, lastKickIndex) {
+    if (player.type !== "T") return "none";
+    const px = player.pos.x;
+    const py = player.pos.y;
+    const cornerCoords = [
+        [px, py],
+        [px + 2, py],
+        [px, py + 2],
+        [px + 2, py + 2],
+    ];
+    const filled = cornerCoords.map(([x, y]) => {
+        if (y < 0 || y >= arena.length) return true;
+        if (x < 0 || x >= (arena[y]?.length || 0)) return true;
+        return arena[y][x] !== 0;
+    });
+    const count = filled.reduce((sum, value) => sum + (value ? 1 : 0), 0);
+    if (count < 3) return "none";
+    const rotation = player.rotation || 0;
+    const front = T_FRONT_CORNERS[rotation] || T_FRONT_CORNERS[0];
+    if (filled[front[0]] && filled[front[1]]) return "full";
+    if (lastKickIndex === 4) return "full";
+    return "mini";
+}
+
+export function isPerfectClear(arena) {
+    for (let y = 0; y < arena.length; y++) {
+        const row = arena[y];
+        for (let x = 0; x < row.length; x++) {
+            if (row[x] !== 0) return false;
+        }
+    }
+    return true;
 }
 
 export function countGarbageCells(arena) {

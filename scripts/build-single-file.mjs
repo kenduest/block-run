@@ -25,12 +25,32 @@ function resolveImport(fromFile, specifier) {
     return path.resolve(path.dirname(fromFile), clean);
 }
 
+function assertSupportedModuleSyntax(file, source) {
+    const relative = path.relative(ROOT, file);
+    // Dynamic imports — bundler can't statically resolve these.
+    const dynamicImport = source.match(/[^.\w]import\s*\(/);
+    if (dynamicImport) {
+        throw new Error(`bundler: dynamic import() not supported in ${relative}. Use static imports.`);
+    }
+    // Side-effect import (no `from` clause).
+    const sideEffect = source.match(/^\s*import\s+["'][^"']+["'];?\s*$/m);
+    if (sideEffect) {
+        throw new Error(`bundler: bare side-effect imports are not supported in ${relative}.`);
+    }
+    // Default export — the stripper only handles named exports.
+    const defaultExport = source.match(/^\s*export\s+default\b/m);
+    if (defaultExport) {
+        throw new Error(`bundler: default exports are not supported in ${relative}. Use named exports.`);
+    }
+}
+
 function visitModule(file) {
     const resolved = path.resolve(file);
     if (seen.has(resolved)) return;
     seen.add(resolved);
 
     const source = readFile(resolved);
+    assertSupportedModuleSyntax(resolved, source);
     const importMatches = [
         ...source.matchAll(/^\s*import\s+[\s\S]*?from\s+["'](.+?)["'];?\s*$/gm),
         ...source.matchAll(/^\s*export\s+\{[\s\S]*?\}\s+from\s+["'](.+?)["'];?\s*$/gm),

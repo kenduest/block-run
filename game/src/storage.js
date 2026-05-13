@@ -7,25 +7,31 @@ const LEGACY_STORAGE_KEYS = [
 
 export const DEFAULT_SETTINGS = {
     language: "auto",
-    dasMs: 125,
-    arrMs: 28,
-    softDropMultiplier: 18,
+    dasMs: 100,
+    arrMs: 16,
+    softDropMultiplier: 20,
     lockDelayMs: 500,
     nextPreviewCount: 3,
     marathonEndless: false,
     ghostEnabled: true,
+    ghostDangerPulse: true,
     soundEnabled: true,
     soundVolume: 0.8,
     effectsLevel: "normal",
     skin: "premium",
     showHints: true,
+    hapticEnabled: true,
+    colorBlindMode: "off",
 };
 
 const DEFAULT_BESTS = {
     arcade: 0,
     marathon: 0,
     sprint: null,
+    sprint20: null,
+    sprint100: null,
     ultra: 0,
+    ultra120: 0,
     dig: null,
     mystery: 0,
     zen: 0,
@@ -59,19 +65,75 @@ const DEFAULT_DATA = {
     recentReplays: [],
 };
 
+const CORRUPT_BACKUP_KEY = "block-run-state-corrupt";
+
+const UI_PREF_KEY_PREFIX = "block-run-ui-pref:";
+
+export function readUiPreference(key, fallback) {
+    try {
+        const raw = localStorage.getItem(`${UI_PREF_KEY_PREFIX}${key}`)
+            ?? localStorage.getItem(key); // legacy keys
+        if (raw === null || raw === undefined) return fallback;
+        if (raw === "1" || raw === "true") return true;
+        if (raw === "0" || raw === "false") return false;
+        try { return JSON.parse(raw); } catch { return fallback; }
+    } catch {
+        return fallback;
+    }
+}
+
+export function writeUiPreference(key, value) {
+    try {
+        const serialized = typeof value === "boolean" ? (value ? "1" : "0") : JSON.stringify(value);
+        localStorage.setItem(`${UI_PREF_KEY_PREFIX}${key}`, serialized);
+    } catch { /* ignore quota / privacy mode */ }
+}
+
 export function loadData() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY)
             || LEGACY_STORAGE_KEYS.map(key => localStorage.getItem(key)).find(Boolean);
         if (!raw) return structuredClone(DEFAULT_DATA);
-        return normalizeData(JSON.parse(raw));
+        try {
+            return normalizeData(JSON.parse(raw));
+        } catch (parseError) {
+            // Preserve the corrupt blob before falling back so it can be inspected/recovered.
+            try { localStorage.setItem(CORRUPT_BACKUP_KEY, raw); } catch { /* ignore */ }
+            console.warn("block-run: corrupt save data preserved at", CORRUPT_BACKUP_KEY, parseError);
+            return structuredClone(DEFAULT_DATA);
+        }
     } catch {
         return structuredClone(DEFAULT_DATA);
     }
 }
 
 export function saveData(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeData(data)));
+    const normalized = normalizeData(data);
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    } catch (error) {
+        if (isQuotaError(error)) {
+            // Trim replays (the heaviest payload) and retry once.
+            normalized.recentReplays = (normalized.recentReplays || []).slice(0, 3).map(replay => ({
+                ...replay,
+                inputs: [],
+            }));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+                return;
+            } catch (retryError) {
+                console.warn("block-run: localStorage quota exceeded; falling back to in-memory state", retryError);
+                return;
+            }
+        }
+        throw error;
+    }
+}
+
+function isQuotaError(error) {
+    if (!error) return false;
+    if (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
+    return Number(error.code) === 22 || Number(error.code) === 1014;
 }
 
 export function resetRecords(data) {
@@ -86,8 +148,10 @@ export function resetRecords(data) {
     saveData(data);
 }
 
+const TIME_BEST_MODES = new Set(["sprint", "sprint20", "sprint100", "dig"]);
+
 export function updateBestScore(data, mode, score, summary = {}) {
-    if (mode === "sprint" || mode === "dig") {
+    if (TIME_BEST_MODES.has(mode)) {
         const current = data.bestScores[mode];
         if (summary.result === "success" && (!current || summary.elapsedMs < current.elapsedMs)) {
             data.bestScores[mode] = pickSummary(summary);
@@ -167,6 +231,7 @@ function normalizeData(input) {
     if (!["off", "low", "normal", "high"].includes(data.settings.effectsLevel)) data.settings.effectsLevel = "normal";
     data.settings.language = normalizeLanguageSetting(data.settings.language);
     if (!["premium", "flat", "classic"].includes(data.settings.skin)) data.settings.skin = "premium";
+    if (!["off", "deutan", "protan", "tritan"].includes(data.settings.colorBlindMode)) data.settings.colorBlindMode = "off";
     if (![0, 1, 3, 5].includes(Number(data.settings.nextPreviewCount))) data.settings.nextPreviewCount = 3;
     data.settings.dasMs = clampNumber(data.settings.dasMs, 60, 260, DEFAULT_SETTINGS.dasMs);
     data.settings.arrMs = clampNumber(data.settings.arrMs, 0, 90, DEFAULT_SETTINGS.arrMs);
@@ -174,9 +239,11 @@ function normalizeData(input) {
     data.settings.lockDelayMs = clampNumber(data.settings.lockDelayMs, 120, 900, DEFAULT_SETTINGS.lockDelayMs);
     data.settings.marathonEndless = Boolean(data.settings.marathonEndless);
     data.settings.ghostEnabled = Boolean(data.settings.ghostEnabled);
+    data.settings.ghostDangerPulse = data.settings.ghostDangerPulse !== false;
     data.settings.soundEnabled = data.settings.soundEnabled !== false;
     data.settings.soundVolume = clampNumber(data.settings.soundVolume, 0, 1, DEFAULT_SETTINGS.soundVolume);
     data.settings.showHints = data.settings.showHints !== false;
+    data.settings.hapticEnabled = data.settings.hapticEnabled !== false;
     return data;
 }
 

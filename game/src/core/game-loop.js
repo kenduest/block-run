@@ -40,6 +40,7 @@ function updateInputRepeat(state, deltaTime, deps) {
     const keyState = deps.keyState || {};
     const settings = state.settings || {};
     const events = [];
+    const INSTANT_DAS_LIMIT = 32;
 
     for (const name of ["left", "right"]) {
         const entry = keyState[name];
@@ -48,14 +49,27 @@ function updateInputRepeat(state, deltaTime, deps) {
         entry.das += deltaTime;
         if (entry.das < (settings.dasMs || 0)) continue;
 
+        const arrMs = Number(settings.arrMs);
+        if (arrMs === 0) {
+            // Instant DAS: shift to wall in one tick.
+            let safety = INSTANT_DAS_LIMIT;
+            while (safety-- > 0) {
+                if (typeof deps.applyAction !== "function") break;
+                const result = deps.applyAction(name, { source: "repeat" });
+                events.push({ action: name, repeated: true });
+                if (!result || result.moved === false) break;
+            }
+            entry.arr = 0;
+            continue;
+        }
+
         entry.arr += deltaTime;
-        const interval = Math.max(1, settings.arrMs || 0);
+        const interval = Math.max(1, arrMs);
 
         while (entry.arr >= interval) {
             entry.arr -= interval;
             events.push({ action: name, repeated: true });
             if (typeof deps.applyAction === "function") deps.applyAction(name, { source: "repeat" });
-            if ((settings.arrMs || 0) === 0) break;
         }
     }
 

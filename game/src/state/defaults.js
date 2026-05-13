@@ -11,6 +11,10 @@ export const DEFAULT_GAME_STATE = {
     maxCombo: 0,
     lastClear: 0,
     tetrisCount: 0,
+    tspinCount: 0,
+    perfectClearCount: 0,
+    lastActionWasRotation: false,
+    lastKickIndex: -1,
     zoneMeter: 0,
     zoneActiveMs: 0,
     garbageCells: 0,
@@ -70,6 +74,7 @@ export const DEFAULT_PLAYER_STATE = {
     matrix: null,
     type: null,
     rotation: 0,
+    lastKickIndex: -1,
 };
 
 export const DEFAULT_RUN_COUNTERS = {

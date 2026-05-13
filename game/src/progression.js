@@ -11,6 +11,7 @@ export const ACHIEVEMENT_DEFINITIONS = {
     },
     combo_5: {
         labelKey: "achievements.combo5",
+        // state.combo is 0-indexed (first clear -> 0, fifth -> 4); >=4 means a 5-chain.
         unlock: state => state.maxCombo >= 4,
         progress: context => ({ current: Math.max(0, Number(context.liveState.maxCombo ?? context.data?.totals?.maxCombo ?? 0) + 1), target: 5 }),
     },
@@ -48,6 +49,20 @@ const RESULT_GRADE_RULES = {
             ["S", 75],
             ["A", 105],
             ["B", 150],
+        ],
+    },
+    sprint20: {
+        thresholds: [
+            ["S", 35],
+            ["A", 55],
+            ["B", 80],
+        ],
+    },
+    sprint100: {
+        thresholds: [
+            ["S", 200],
+            ["A", 270],
+            ["B", 380],
         ],
     },
     dig: {
@@ -127,9 +142,11 @@ export function resultGradeHint(grade) {
     return TEXT.result.gradeHint || "Keep the stack cleaner and push efficiency.";
 }
 
+const TIME_BEST_MODES = new Set(["sprint", "sprint20", "sprint100", "dig"]);
+
 export function isNewBest(summary, data) {
     const currentBest = data.bestScores[summary.mode];
-    if (summary.mode === "sprint" || summary.mode === "dig") {
+    if (TIME_BEST_MODES.has(summary.mode)) {
         return summary.result === "success" && (!currentBest || summary.elapsedMs < currentBest.elapsedMs);
     }
     if (summary.mode === "daily") {
